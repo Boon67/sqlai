@@ -1,0 +1,7 @@
+name: cortex_aisql_demo
+channels:
+  - snowflake
+dependencies:
+  - snowflake-snowpark-python
+  - pandas
+

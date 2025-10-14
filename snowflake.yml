@@ -1,0 +1,14 @@
+definition_version: "2"
+entities:
+  CORTEX_AISQL_DEMO.DEMO_DATA.cortex_aisql_demo:
+    type: "streamlit"
+    title: "Cortex AISQL Functions Demo"
+    query_warehouse: "COMPUTE_WH"
+    main_file: "streamlit_app.py"
+    pages_dir: null
+    stage: "CORTEX_AISQL_DEMO.DEMO_DATA.streamlit_stage"
+    artifacts:
+      - streamlit_app.py
+      - environment.yml
+      - setup_data.sql
+
