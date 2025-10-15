@@ -1,5 +1,8 @@
 -- =====================================================
--- Example Queries for Cortex AISQL Functions
+-- Snowflake Cortex AISQL Example Queries
+-- Specialty Insurance Demo
+-- =====================================================
+-- All queries tested and working with insurance data
 -- Use these as templates for your own implementations
 -- =====================================================
 
@@ -7,101 +10,106 @@ USE DATABASE CORTEX_AISQL_DEMO;
 USE SCHEMA DEMO_DATA;
 
 -- =====================================================
--- 1. AI_EXTRACT - Entity Extraction
+-- 1. AI_EXTRACT - Entity Extraction from Insurance Documents
 -- =====================================================
 
--- Extract order numbers from customer tickets
+-- Extract policy numbers, claim amounts, and insurance types from customer tickets
 SELECT 
     ticket_id,
     customer_name,
-    ticket_text,
     AI_EXTRACT(
         ticket_text,
-        [['order_number','What is the order number or policy number?']]
-    ):response.order_number::string as order_number
-FROM customer_tickets
-WHERE ticket_text ILIKE '%order%' OR ticket_text ILIKE '%policy%'
-LIMIT 5;
-
--- Extract multiple entities at once
-SELECT 
-    ticket_id,
+        [['policy_number','What is the policy number or order number?']]
+    ):response.policy_number::string as policy_number,
     AI_EXTRACT(
         ticket_text,
-        [['product','What product or insurance type is mentioned?'],
-         ['order_number','What is the order number or policy number?'],
-         ['date','What date is mentioned?']]
-    ) as extracted_entities
+        [['claim_amount','What is the claim amount or dollar value mentioned?']]
+    ):response.claim_amount::string as claim_amount,
+    AI_EXTRACT(
+        ticket_text,
+        [['insurance_type','What type of insurance is this? D AND O, Cyber, E AND O, EPLI, or Product Liability?']]
+    ):response.insurance_type::string as insurance_type
 FROM customer_tickets
 LIMIT 5;
 
--- Extract contact information
+-- Extract contact information from unstructured insurance data
 SELECT 
     data_id,
-    raw_text,
+    data_source,
     AI_EXTRACT(raw_text, [['emails','Extract all email addresses']]):response.emails::string as emails,
     AI_EXTRACT(raw_text, [['phones','Extract all phone numbers']]):response.phones::string as phones,
-    AI_EXTRACT(raw_text, [['names','Extract all person names']]):response.names::string as names
+    AI_EXTRACT(raw_text, [['policy_numbers','Extract all policy numbers']]):response.policy_numbers::string as policy_numbers
 FROM unstructured_data;
 
+-- Extract coverage limits from policy documents
+SELECT 
+    doc_id,
+    document_name,
+    AI_EXTRACT(
+        document_text,
+        [['coverage_limit','What is the policy coverage limit or maximum amount?']]
+    ):response.coverage_limit::string as coverage_limit,
+    AI_EXTRACT(
+        document_text,
+        [['retention','What is the retention or deductible amount?']]
+    ):response.retention::string as retention_amount
+FROM documents
+WHERE doc_type = 'policy_terms';
+
 -- =====================================================
--- 2. AI_AGG - Insights Aggregation
+-- 2. AI_AGG - Aggregate Insights Across Insurance Data
 -- =====================================================
 
--- Aggregate insights across all customer tickets
+-- Analyze all insurance customer tickets for common themes
 SELECT 
     AI_AGG(
         ticket_text,
-        'Summarize the most common customer issues and complaints. Group by issue type and provide counts.'
+        'Identify the most common insurance claims issues and trends. Summarize key themes.'
     ) as aggregated_insights
 FROM customer_tickets;
 
--- Category-specific aggregation
+-- Category-specific analysis - analyze Claims tickets
 SELECT 
-    category,
     AI_AGG(
         ticket_text,
-        'What are the key themes and urgent issues in these tickets?'
-    ) as category_insights
+        'Summarize the key issues and themes in these Claims tickets. Provide actionable recommendations.'
+    ) as claims_insights
 FROM customer_tickets
-GROUP BY category;
+WHERE category = 'Claims';
 
--- Aggregate product review insights
+-- Aggregate product review insights for insurance products
 SELECT 
     AI_AGG(
         review_text,
-        'Summarize customer satisfaction, common complaints, and praised features.'
-    ) as review_summary
-FROM product_reviews
-WHERE rating <= 3;
+        'Summarize customer satisfaction levels, common complaints, and praised features across all product reviews.'
+    ) as review_insights
+FROM product_reviews;
 
--- Time-based aggregation
+-- Aggregate insights from insurance policy documents
 SELECT 
-    DATE_TRUNC('week', created_date) as week,
     AI_AGG(
-        ticket_text,
-        'Summarize main issues this week'
-    ) as weekly_summary
-FROM customer_tickets
-GROUP BY week
-ORDER BY week DESC;
+        document_text,
+        'Identify claims trends, incident types, severity patterns, and frequency patterns across these insurance documents.'
+    ) as claims_trends
+FROM documents
+WHERE doc_type = 'claims_report';
 
 -- =====================================================
--- 3. AI_CLASSIFY - Content Classification
+-- 3. AI_CLASSIFY - Classify Insurance Content
 -- =====================================================
 
--- Classify social media posts by topic
+-- Classify social media posts by insurance type
 SELECT 
     post_id,
     username,
     post_text,
     AI_CLASSIFY(
         post_text,
-        ['technology', 'fitness', 'food', 'travel', 'gaming', 'books', 'finance']
-    ) as topic
+        ['cyber_insurance', 'directors_officers', 'errors_omissions', 'employment_practices', 'product_liability']
+    ):labels[0]::string as insurance_category
 FROM social_media_posts;
 
--- Classify reviews by sentiment category
+-- Classify product reviews by topic
 SELECT 
     review_id,
     product_name,
@@ -109,49 +117,60 @@ SELECT
     rating,
     AI_CLASSIFY(
         review_text,
-        ['positive_feedback', 'quality_issue', 'price_concern', 'feature_request']
-    ) as review_category
+        ['claims_handling', 'coverage_quality', 'pricing_premium', 'customer_service', 'policy_clarity']
+    ):labels[0]::string as review_topic
 FROM product_reviews;
 
--- Intelligent ticket routing
+-- Route tickets to appropriate insurance departments
 SELECT 
     ticket_id,
     customer_name,
-    ticket_text,
     category as original_category,
     AI_CLASSIFY(
         ticket_text,
-        ['billing', 'technical_support', 'returns_exchanges', 'account_management', 'general_inquiry']
-    ) as recommended_department
+        ['claims', 'underwriting', 'policy_services', 'renewals', 'customer_service']
+    ):labels[0]::string as recommended_department
 FROM customer_tickets;
 
--- Multi-label classification (if supported)
+-- =====================================================
+-- 4. AI_SENTIMENT - Analyze Insurance Customer Sentiment
+-- =====================================================
+
+-- Analyze product review sentiment for insurance products
 SELECT 
-    post_id,
-    post_text,
-    AI_CLASSIFY(
-        post_text,
-        ['positive_sentiment', 'negative_sentiment', 'urgent', 'feedback', 'question']
-    ) as labels
-FROM social_media_posts;
+    review_id,
+    product_name,
+    review_text,
+    rating,
+    AI_SENTIMENT(review_text):categories[0].sentiment::string as sentiment_label
+FROM product_reviews
+ORDER BY review_date DESC;
 
--- =====================================================
--- 4. AI_FILTER - Advanced Filtering
--- =====================================================
-
--- Filter tickets that mention product defects
+-- Identify frustrated customers in insurance tickets
 SELECT 
     ticket_id,
     customer_name,
+    category,
     ticket_text,
-    AI_FILTER(
-        ticket_text,
-        'Does this ticket mention a product defect or quality issue?'
-    ) as has_defect
+    AI_SENTIMENT(ticket_text):categories[0].sentiment::string as sentiment_label
 FROM customer_tickets
-QUALIFY has_defect = TRUE;
+WHERE AI_SENTIMENT(ticket_text):categories[0].sentiment::string = 'negative';
 
--- Filter urgent tickets
+-- Analyze social media sentiment about insurance products
+SELECT 
+    post_id,
+    username,
+    platform,
+    post_text,
+    AI_SENTIMENT(post_text):categories[0].sentiment::string as sentiment_label
+FROM social_media_posts
+ORDER BY post_date DESC;
+
+-- =====================================================
+-- 5. AI_FILTER - Filter Insurance Data with Natural Language
+-- =====================================================
+
+-- Find tickets mentioning cyber security incidents
 SELECT 
     ticket_id,
     customer_name,
@@ -159,11 +178,20 @@ SELECT
     category
 FROM customer_tickets
 WHERE AI_FILTER(
-    ticket_text,
-    'Is this ticket urgent or expressing frustration?'
+    PROMPT('Does this mention a cyber security incident or ransomware? {0}', ticket_text)
 ) = TRUE;
 
--- Filter positive reviews
+-- Filter for claim notifications requiring immediate attention
+SELECT 
+    ticket_id,
+    customer_name,
+    ticket_text
+FROM customer_tickets
+WHERE AI_FILTER(
+    PROMPT('Is this a claim notification requiring immediate attention? {0}', ticket_text)
+) = TRUE;
+
+-- Find reviews mentioning claims handling
 SELECT 
     review_id,
     product_name,
@@ -171,341 +199,250 @@ SELECT
     rating
 FROM product_reviews
 WHERE AI_FILTER(
-    review_text,
-    'Is this review highly positive and enthusiastic?'
+    PROMPT('Does this review mention claims handling or claims service? {0}', review_text)
 ) = TRUE;
 
--- Complex filtering with multiple conditions
+-- Filter posts about D&O insurance
+SELECT 
+    post_id,
+    username,
+    post_text,
+    platform
+FROM social_media_posts
+WHERE AI_FILTER(
+    PROMPT('Does this mention D AND O or directors and officers insurance? {0}', post_text)
+) = TRUE;
+
+-- =====================================================
+-- 6. AI_TRANSLATE - Translate Insurance Communications
+-- =====================================================
+
+-- Translate policy communications to English
+SELECT 
+    content_id,
+    source_language,
+    original_text,
+    AI_TRANSLATE(
+        original_text,
+        source_language,
+        'en'
+    ) as english_translation
+FROM multilingual_content;
+
+-- Translate claims notifications to multiple languages
+SELECT 
+    'en' as source_language,
+    'Your cyber insurance claim has been approved' as original_text,
+    AI_TRANSLATE('Your cyber insurance claim has been approved', 'en', 'es') as spanish,
+    AI_TRANSLATE('Your cyber insurance claim has been approved', 'en', 'fr') as french,
+    AI_TRANSLATE('Your cyber insurance claim has been approved', 'en', 'de') as german;
+
+-- Batch translate insurance documents
+SELECT 
+    content_id,
+    content_type,
+    AI_TRANSLATE(original_text, source_language, 'en') as english_version,
+    AI_TRANSLATE(original_text, source_language, 'es') as spanish_version
+FROM multilingual_content
+WHERE content_type = 'claims_notification';
+
+-- =====================================================
+-- 7. AI_COMPLETE - Generate Insurance Content
+-- =====================================================
+
+-- Generate a professional response to a cyber insurance claim
+SELECT 
+    AI_COMPLETE(
+        'llama3.1-70b',
+        'Write a professional response to a policyholder who filed a cyber insurance claim for a ransomware attack. Be empathetic and explain next steps.'
+    ) as claim_response;
+
+-- Create a policy summary for D&O insurance
+SELECT 
+    AI_COMPLETE(
+        'llama3.1-70b',
+        'Write a clear policy summary for Directors and Officers Liability Insurance. Highlight key coverage features, limits, and benefits. Professional tone.'
+    ) as policy_summary;
+
+-- Generate claims notification email
+SELECT 
+    AI_COMPLETE(
+        'mistral-large2',
+        'Write a claims notification email about cyber insurance coverage. Include next steps, what is covered, and contact information. Professional tone.'
+    ) as claims_email;
+
+-- Generate FAQ answer about insurance coverage
+SELECT 
+    AI_COMPLETE(
+        'llama3.1-70b',
+        'Write a comprehensive FAQ answer about Cyber Insurance coverage. Be clear, helpful, and address common concerns about ransomware and data breaches.'
+    ) as faq_answer;
+
+-- =====================================================
+-- 8. COMBINED QUERIES - Multiple AI Functions Together
+-- =====================================================
+
+-- Analyze ticket with multiple AI functions
 SELECT 
     ticket_id,
     customer_name,
     ticket_text,
-    AI_FILTER(ticket_text, 'Mentions refund or return?') as wants_refund,
-    AI_FILTER(ticket_text, 'Is customer frustrated?') as is_frustrated,
-    AI_FILTER(ticket_text, 'Mentions specific product?') as has_product
-FROM customer_tickets;
+    category,
+    AI_EXTRACT(ticket_text, [['policy_number','What is the policy number?']]):response.policy_number::string as policy_number,
+    AI_SENTIMENT(ticket_text):categories[0].sentiment::string as sentiment,
+    AI_CLASSIFY(ticket_text, ['claims', 'new_business', 'renewal', 'feedback']):labels[0]::string as ticket_type,
+    AI_FILTER(PROMPT('Is this urgent? {0}', ticket_text)) as is_urgent
+FROM customer_tickets
+LIMIT 5;
 
--- =====================================================
--- 5. AI_SENTIMENT - Sentiment Analysis
--- =====================================================
-
--- Basic sentiment analysis
+-- Comprehensive product review analysis
 SELECT 
     review_id,
     product_name,
     review_text,
     rating,
-    AI_SENTIMENT(review_text) as sentiment_score,
-    CASE 
-        WHEN AI_SENTIMENT(review_text) >= 0.5 THEN 'Positive'
-        WHEN AI_SENTIMENT(review_text) >= 0 THEN 'Neutral'
-        ELSE 'Negative'
-    END as sentiment_label
-FROM product_reviews
-ORDER BY sentiment_score DESC;
+    AI_SENTIMENT(review_text):categories[0].sentiment::string as sentiment,
+    AI_CLASSIFY(review_text, ['claims_handling', 'coverage_quality', 'pricing_premium']):labels[0]::string as topic,
+    AI_EXTRACT(review_text, [['key_issue','What is the main issue or praise?']]):response.key_issue::string as key_point
+FROM product_reviews;
 
--- Identify dissatisfied customers
-SELECT 
-    ticket_id,
-    customer_name,
-    email,
-    ticket_text,
-    AI_SENTIMENT(ticket_text) as sentiment_score
-FROM customer_tickets
-WHERE AI_SENTIMENT(ticket_text) < -0.3
-ORDER BY sentiment_score ASC;
-
--- Average sentiment by product
-SELECT 
-    product_name,
-    AVG(rating) as avg_rating,
-    AVG(AI_SENTIMENT(review_text)) as avg_sentiment,
-    COUNT(*) as review_count
-FROM product_reviews
-GROUP BY product_name
-ORDER BY avg_sentiment DESC;
-
--- Sentiment trend over time
-SELECT 
-    DATE_TRUNC('day', review_date) as date,
-    AVG(AI_SENTIMENT(review_text)) as avg_sentiment,
-    COUNT(*) as review_count
-FROM product_reviews
-GROUP BY date
-ORDER BY date;
-
--- Sentiment by category
-SELECT 
-    category,
-    AVG(AI_SENTIMENT(ticket_text)) as avg_sentiment,
-    COUNT(*) as ticket_count,
-    SUM(CASE WHEN AI_SENTIMENT(ticket_text) < -0.3 THEN 1 ELSE 0 END) as frustrated_count
-FROM customer_tickets
-GROUP BY category
-ORDER BY avg_sentiment ASC;
-
--- =====================================================
--- 6. AI_TRANSLATE - Translation
--- =====================================================
-
--- Translate to English
+-- Multi-language insurance content analysis
 SELECT 
     content_id,
-    original_text,
     source_language,
-    AI_TRANSLATE(original_text, source_language, 'en') as english_translation
-FROM multilingual_content
-WHERE source_language != 'en';
-
--- Multi-language translation
-SELECT 
-    content_id,
-    original_text as original,
-    source_language,
-    AI_TRANSLATE(original_text, source_language, 'en') as english,
-    AI_TRANSLATE(original_text, source_language, 'es') as spanish,
-    AI_TRANSLATE(original_text, source_language, 'fr') as french
-FROM multilingual_content
-WHERE source_language NOT IN ('en', 'es', 'fr')
-LIMIT 5;
-
--- Translate customer tickets for global support team
-SELECT 
-    ticket_id,
-    customer_name,
-    ticket_text as original,
-    AI_TRANSLATE(ticket_text, 'en', 'es') as spanish,
-    AI_TRANSLATE(ticket_text, 'en', 'de') as german,
-    AI_TRANSLATE(ticket_text, 'en', 'ja') as japanese
-FROM customer_tickets
-LIMIT 3;
-
--- =====================================================
--- 7. AI_COMPLETE - Text Generation
--- =====================================================
-
--- Generate customer response
-SELECT 
-    ticket_id,
-    customer_name,
-    ticket_text,
-    AI_COMPLETE(
-        'llama3.1-70b',
-        'You are a customer service representative. Write a professional, empathetic response to this ticket: ' || ticket_text
-    ) as generated_response
-FROM customer_tickets
-LIMIT 3;
-
--- Generate product descriptions
-SELECT 
-    product_name,
-    AI_COMPLETE(
-        'mistral-large2',
-        'Write a compelling product description for: ' || product_name || '. Highlight key features and benefits in 2-3 sentences.'
-    ) as product_description
-FROM (SELECT DISTINCT product_name FROM product_reviews)
-LIMIT 5;
-
--- Summarize documents
-SELECT 
-    document_name,
-    doc_type,
-    AI_COMPLETE(
-        'llama3.1-70b',
-        'Summarize this document in 3-4 sentences: ' || document_text
-    ) as summary
-FROM documents;
-
--- Generate FAQ answers
-SELECT 
-    AI_COMPLETE(
-        'llama3.1-70b',
-        'Based on these customer questions: ' || LISTAGG(ticket_text, ' | ') || 
-        ' Create a FAQ section with the 3 most common questions and answers.'
-    ) as faq_section
-FROM customer_tickets
-WHERE category = 'General Inquiry';
-
--- =====================================================
--- 8. AI_SUMMARIZE_AGG - Document Summarization
--- =====================================================
-
--- Summarize all customer feedback
-SELECT 
-    AI_SUMMARIZE_AGG(ticket_text) as feedback_summary
-FROM customer_tickets;
-
--- Summarize reviews by product
-SELECT 
-    product_name,
-    AI_SUMMARIZE_AGG(review_text) as review_summary
-FROM product_reviews
-GROUP BY product_name;
-
--- Summarize documents by type
-SELECT 
-    doc_type,
-    AI_SUMMARIZE_AGG(document_text) as type_summary
-FROM documents
-GROUP BY doc_type;
-
--- =====================================================
--- 9. Combined Queries - Real-world Workflows
--- =====================================================
-
--- Complete ticket analysis workflow
-WITH ticket_analysis AS (
-    SELECT 
-        ticket_id,
-        customer_name,
-        ticket_text,
-        category,
-        AI_SENTIMENT(ticket_text) as sentiment,
-        AI_CLASSIFY(
-            ticket_text,
-            ['billing', 'technical', 'product_issue', 'general']
-        ) as classified_type,
-        AI_FILTER(ticket_text, 'Is this urgent?') as is_urgent,
-        AI_EXTRACT(ticket_text, [['main_issue','What is the main issue?']]):response.main_issue::string as main_issue
-    FROM customer_tickets
-)
-SELECT 
-    *,
-    CASE 
-        WHEN is_urgent AND sentiment < -0.3 THEN 'High Priority'
-        WHEN is_urgent OR sentiment < -0.3 THEN 'Medium Priority'
-        ELSE 'Normal Priority'
-    END as priority
-FROM ticket_analysis
-ORDER BY priority, sentiment;
-
--- Multi-language customer support workflow
-WITH translated_tickets AS (
-    SELECT 
-        ticket_id,
-        customer_name,
-        ticket_text as original_text,
-        'en' as source_lang,
-        AI_TRANSLATE(ticket_text, 'en', 'es') as spanish_text,
-        AI_SENTIMENT(ticket_text) as sentiment
-    FROM customer_tickets
-)
-SELECT 
-    ticket_id,
-    customer_name,
+    content_type,
     original_text,
-    spanish_text,
-    sentiment,
-    AI_COMPLETE(
-        'llama3.1-70b',
-        'Write a response in Spanish to this ticket: ' || spanish_text
-    ) as spanish_response
-FROM translated_tickets
-WHERE sentiment < 0
-LIMIT 3;
-
--- Product intelligence dashboard
-SELECT 
-    product_name,
-    COUNT(*) as total_reviews,
-    AVG(rating) as avg_rating,
-    AVG(AI_SENTIMENT(review_text)) as avg_sentiment,
-    SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) as positive_reviews,
-    SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) as negative_reviews,
-    AI_AGG(
-        CASE WHEN rating <= 2 THEN review_text END,
-        'Summarize common complaints'
-    ) as complaint_summary,
-    AI_AGG(
-        CASE WHEN rating >= 4 THEN review_text END,
-        'Summarize what customers love'
-    ) as praise_summary
-FROM product_reviews
-GROUP BY product_name;
-
--- Content moderation pipeline
-SELECT 
-    post_id,
-    username,
-    post_text,
-    platform,
-    AI_SENTIMENT(post_text) as sentiment,
+    AI_TRANSLATE(original_text, source_language, 'en') as english_text,
+    AI_SENTIMENT(AI_TRANSLATE(original_text, source_language, 'en')):categories[0].sentiment::string as sentiment,
     AI_CLASSIFY(
-        post_text,
-        ['appropriate', 'needs_review', 'inappropriate']
-    ) as moderation_status,
-    AI_FILTER(post_text, 'Does this contain complaints?') as has_complaint,
-    AI_FILTER(post_text, 'Is this promotional content?') as is_promotional
-FROM social_media_posts;
+        AI_TRANSLATE(original_text, source_language, 'en'),
+        ['claim_approval', 'policy_renewal', 'coverage_update']
+    ):labels[0]::string as content_category
+FROM multilingual_content
+LIMIT 3;
 
 -- =====================================================
--- 10. Helper Functions
+-- 9. INSURANCE-SPECIFIC USE CASES
 -- =====================================================
 
--- Count tokens before sending to model
+-- Find high-value cyber insurance claims
 SELECT 
     ticket_id,
-    ticket_text,
-    AI_COUNT_TOKENS('llama3.1-70b', ticket_text) as token_count
+    customer_name,
+    AI_EXTRACT(ticket_text, [['claim_amount','What is the claim amount in dollars?']]):response.claim_amount::string as claim_amount,
+    AI_FILTER(PROMPT('Does this mention cyber security or ransomware? {0}', ticket_text)) as is_cyber_claim
 FROM customer_tickets
-ORDER BY token_count DESC;
+WHERE category = 'Claims'
+  AND AI_FILTER(PROMPT('Does this mention cyber security or ransomware? {0}', ticket_text)) = TRUE;
 
--- Check if text will fit in context window
+-- Analyze D&O policy documents for coverage limits
 SELECT 
     doc_id,
     document_name,
-    AI_COUNT_TOKENS('llama3.1-70b', document_text) as tokens,
-    CASE 
-        WHEN AI_COUNT_TOKENS('llama3.1-70b', document_text) < 4000 THEN 'Can process'
-        ELSE 'Too large, consider chunking'
-    END as processing_recommendation
-FROM documents;
+    AI_EXTRACT(
+        document_text,
+        [['side_a_limit','What is the Side A coverage limit?'],
+         ['side_b_limit','What is the Side B coverage limit?'],
+         ['side_c_limit','What is the Side C coverage limit?']]
+    ) as coverage_limits
+FROM documents
+WHERE document_name ILIKE '%D_AND_O%';
 
--- =====================================================
--- Performance Optimization Tips
--- =====================================================
-
--- 1. Use appropriate warehouse size
--- ALTER WAREHOUSE COMPUTE_WH SET WAREHOUSE_SIZE = 'LARGE';
-
--- 2. Process in batches for large datasets
--- SELECT * FROM large_table LIMIT 100;
-
--- 3. Use smaller models when appropriate
--- 'llama3.1-8b' is faster than 'llama3.1-70b'
-
--- 4. Cache results when possible
--- CREATE TABLE cached_results AS
--- SELECT id, AI_SENTIMENT(text) as sentiment
--- FROM my_table;
-
--- 5. Use QUALIFY for filtering instead of subqueries
--- More efficient than WHERE EXISTS or IN
-
--- =====================================================
--- Cost Monitoring
--- =====================================================
-
--- Track Cortex usage
+-- Identify negative reviews about claims handling
 SELECT 
-    DATE_TRUNC('day', START_TIME) as day,
-    SERVICE_TYPE,
-    COUNT(*) as operation_count,
-    SUM(CREDITS_USED) as total_credits
-FROM SNOWFLAKE.ACCOUNT_USAGE.METERING_HISTORY
-WHERE SERVICE_TYPE = 'CORTEX'
-    AND START_TIME >= DATEADD('day', -30, CURRENT_TIMESTAMP())
-GROUP BY 1, 2
-ORDER BY 1 DESC;
+    review_id,
+    product_name,
+    review_text,
+    rating
+FROM product_reviews
+WHERE AI_SENTIMENT(review_text):categories[0].sentiment::string = 'negative'
+  AND AI_FILTER(PROMPT('Does this mention claims handling? {0}', review_text)) = TRUE;
 
--- Track queries by function
+-- Generate personalized claim response based on ticket
+WITH ticket_info AS (
+    SELECT 
+        ticket_id,
+        customer_name,
+        category,
+        ticket_text,
+        AI_EXTRACT(ticket_text, [['insurance_type','What type of insurance?']]):response.insurance_type::string as insurance_type
+    FROM customer_tickets
+    WHERE ticket_id = 2
+)
 SELECT 
-    REGEXP_SUBSTR(QUERY_TEXT, 'CORTEX\\.[A-Z_]+') as cortex_function,
-    COUNT(*) as usage_count,
-    AVG(TOTAL_ELAPSED_TIME/1000) as avg_seconds
-FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
-WHERE QUERY_TEXT ILIKE '%CORTEX%'
-    AND START_TIME >= DATEADD('day', -7, CURRENT_TIMESTAMP())
-GROUP BY 1
-ORDER BY 2 DESC;
+    ticket_id,
+    customer_name,
+    insurance_type,
+    AI_COMPLETE(
+        'llama3.1-70b',
+        'Write a professional response to ' || customer_name || ' regarding their ' || insurance_type || ' inquiry: ' || ticket_text
+    ) as personalized_response
+FROM ticket_info;
 
+-- =====================================================
+-- 10. PERFORMANCE AND OPTIMIZATION EXAMPLES
+-- =====================================================
+
+-- Batch process tickets with AI functions (efficient)
+SELECT 
+    ticket_id,
+    AI_SENTIMENT(ticket_text):categories[0].sentiment::string as sentiment,
+    AI_CLASSIFY(ticket_text, ['claims', 'underwriting', 'policy_services']):labels[0]::string as department
+FROM customer_tickets
+WHERE created_date >= DATEADD(day, -30, CURRENT_DATE());
+
+-- Use AI_AGG for large-scale analysis (no context window limits)
+-- Note: AI_AGG processes all rows at once, so we use separate queries per category
+SELECT 
+    'Claims' as category,
+    COUNT(*) as ticket_count,
+    AI_AGG(
+        ticket_text,
+        'Provide a brief summary of the main issues in these Claims tickets.'
+    ) as category_summary
+FROM customer_tickets
+WHERE category = 'Claims'
+
+UNION ALL
+
+SELECT 
+    'New Business' as category,
+    COUNT(*) as ticket_count,
+    AI_AGG(
+        ticket_text,
+        'Provide a brief summary of the main issues in these New Business tickets.'
+    ) as category_summary
+FROM customer_tickets
+WHERE category = 'New Business'
+
+UNION ALL
+
+SELECT 
+    'Renewal' as category,
+    COUNT(*) as ticket_count,
+    AI_AGG(
+        ticket_text,
+        'Provide a brief summary of the main issues in these Renewal tickets.'
+    ) as category_summary
+FROM customer_tickets
+WHERE category = 'Renewal';
+
+-- Filter before applying expensive AI operations
+SELECT 
+    ticket_id,
+    customer_name,
+    AI_COMPLETE(
+        'llama3.1-8b',  -- Use smaller model for simple tasks
+        'Summarize this ticket in one sentence: ' || ticket_text
+    ) as summary
+FROM customer_tickets
+WHERE category = 'Claims'
+  AND created_date >= CURRENT_DATE() - 7;
+
+-- =====================================================
+-- END OF EXAMPLE QUERIES
+-- =====================================================
+-- Note: All queries use insurance-specific data
+-- Replace table names and columns as needed for your use case
+-- Test queries incrementally to ensure they work with your data
+-- =====================================================
