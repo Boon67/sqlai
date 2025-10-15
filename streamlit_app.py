@@ -372,7 +372,7 @@ elif demo_option == "📊 Insights Aggregation":
                 
                 query = f"""
                 SELECT 
-                    SNOWFLAKE.CORTEX.AI_AGG(
+                    AI_AGG(
                         ticket_text,
                         'Summarize the key issues and themes in these {category} tickets. Provide actionable recommendations.'
                     ) as category_insights
@@ -459,7 +459,7 @@ elif demo_option == "🏷️ Content Classification":
                         AI_CLASSIFY(
                             post_text,
                             {categories_array}
-                        ) as category
+                        ):labels[0]::string as category
                     FROM CORTEX_AISQL_DEMO.DEMO_DATA.social_media_posts
                     """
                     
@@ -500,7 +500,7 @@ elif demo_option == "🏷️ Content Classification":
                     AI_CLASSIFY(
                         review_text,
                         ['{categories_str}']
-                    ) as review_type
+                    ):labels[0]::string as review_type
                 FROM CORTEX_AISQL_DEMO.DEMO_DATA.product_reviews
                 """
                 
@@ -547,7 +547,7 @@ elif demo_option == "🏷️ Content Classification":
                     AI_CLASSIFY(
                         ticket_text,
                         ['{departments_str}']
-                    ) as recommended_department
+                    ):labels[0]::string as recommended_department
                 FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
                 """
                 
@@ -593,12 +593,7 @@ elif demo_option == "😊 Sentiment Analysis":
                     product_name,
                     review_text,
                     rating,
-                    AI_SENTIMENT(review_text) as sentiment_score,
-                    CASE 
-                        WHEN AI_SENTIMENT(review_text) >= 0.5 THEN '😊 Positive'
-                        WHEN AI_SENTIMENT(review_text) >= 0 THEN '😐 Neutral'
-                        ELSE '😞 Negative'
-                    END as sentiment_label
+                    AI_SENTIMENT(review_text):categories[0].sentiment::string as sentiment_label
                 FROM CORTEX_AISQL_DEMO.DEMO_DATA.product_reviews
                 ORDER BY review_date DESC
                 """
@@ -616,23 +611,27 @@ elif demo_option == "😊 Sentiment Analysis":
                     st.bar_chart(sentiment_counts)
                 
                 with col2:
-                    st.markdown("### 📈 Average Sentiment by Product")
-                    avg_sentiment = results.groupby('PRODUCT_NAME')['SENTIMENT_SCORE'].mean().sort_values(ascending=False)
-                    st.bar_chart(avg_sentiment)
+                    st.markdown("### 📈 Sentiment by Product")
+                    product_sentiment = results.groupby(['PRODUCT_NAME', 'SENTIMENT_LABEL']).size().unstack(fill_value=0)
+                    st.bar_chart(product_sentiment)
                 
                 st.markdown("### 🎯 Insights")
-                avg_score = results['SENTIMENT_SCORE'].mean()
-                st.metric("Average Sentiment Score", f"{avg_score:.3f}")
+                positive_count = len(results[results['SENTIMENT_LABEL'] == 'positive'])
+                negative_count = len(results[results['SENTIMENT_LABEL'] == 'negative'])
+                total = len(results)
+                st.metric("Positive Reviews", f"{positive_count}/{total} ({positive_count/total*100:.1f}%)")
                 
-                most_positive = results.loc[results['SENTIMENT_SCORE'].idxmax()]
-                most_negative = results.loc[results['SENTIMENT_SCORE'].idxmin()]
+                most_positive = results[results['SENTIMENT_LABEL'] == 'positive'].head(1)
+                most_negative = results[results['SENTIMENT_LABEL'] == 'negative'].head(1)
                 
                 col3, col4 = st.columns(2)
                 with col3:
-                    st.success(f"**Most Positive Review:**\n\n{most_positive['PRODUCT_NAME']}\n\nScore: {most_positive['SENTIMENT_SCORE']:.3f}")
+                    if len(most_positive) > 0:
+                        st.success(f"**Example Positive Review:**\n\n{most_positive.iloc[0]['PRODUCT_NAME']}\n\nRating: {most_positive.iloc[0]['RATING']}/5")
                 
                 with col4:
-                    st.error(f"**Most Negative Review:**\n\n{most_negative['PRODUCT_NAME']}\n\nScore: {most_negative['SENTIMENT_SCORE']:.3f}")
+                    if len(most_negative) > 0:
+                        st.error(f"**Example Negative Review:**\n\n{most_negative.iloc[0]['PRODUCT_NAME']}\n\nRating: {most_negative.iloc[0]['RATING']}/5")
                 
                 with st.expander("📋 View SQL Query"):
                     st.code(query, language="sql")
@@ -652,12 +651,7 @@ elif demo_option == "😊 Sentiment Analysis":
                     customer_name,
                     category,
                     ticket_text,
-                    AI_SENTIMENT(ticket_text) as sentiment_score,
-                    CASE 
-                        WHEN AI_SENTIMENT(ticket_text) >= 0.3 THEN '😊 Satisfied'
-                        WHEN AI_SENTIMENT(ticket_text) >= -0.3 THEN '😐 Neutral'
-                        ELSE '😞 Frustrated'
-                    END as customer_mood
+                    AI_SENTIMENT(ticket_text):categories[0].sentiment::string as sentiment_label
                 FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
                 ORDER BY created_date DESC
                 """
@@ -670,20 +664,20 @@ elif demo_option == "😊 Sentiment Analysis":
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.markdown("### 📊 Customer Mood Distribution")
-                    mood_counts = results['CUSTOMER_MOOD'].value_counts()
-                    st.bar_chart(mood_counts)
+                    st.markdown("### 📊 Sentiment Distribution")
+                    sentiment_counts = results['SENTIMENT_LABEL'].value_counts()
+                    st.bar_chart(sentiment_counts)
                 
                 with col2:
-                    st.markdown("### 📈 Average Sentiment by Category")
-                    category_sentiment = results.groupby('CATEGORY')['SENTIMENT_SCORE'].mean().sort_values(ascending=False)
+                    st.markdown("### 📈 Sentiment by Category")
+                    category_sentiment = results.groupby(['CATEGORY', 'SENTIMENT_LABEL']).size().unstack(fill_value=0)
                     st.bar_chart(category_sentiment)
                 
-                # Identify frustrated customers
-                frustrated = results[results['SENTIMENT_SCORE'] < -0.3]
-                if len(frustrated) > 0:
-                    st.warning(f"⚠️ **{len(frustrated)} Frustrated Customers Detected** - Requires immediate attention!")
-                    st.dataframe(frustrated[['TICKET_ID', 'CUSTOMER_NAME', 'CATEGORY', 'SENTIMENT_SCORE']], use_container_width=True)
+                # Identify negative sentiment customers
+                negative = results[results['SENTIMENT_LABEL'] == 'negative']
+                if len(negative) > 0:
+                    st.warning(f"⚠️ **{len(negative)} Negative Sentiment Tickets Detected** - May require immediate attention!")
+                    st.dataframe(negative[['TICKET_ID', 'CUSTOMER_NAME', 'CATEGORY', 'SENTIMENT_LABEL']], use_container_width=True)
                 
                 with st.expander("📋 View SQL Query"):
                     st.code(query, language="sql")
@@ -703,14 +697,7 @@ elif demo_option == "😊 Sentiment Analysis":
                     username,
                     platform,
                     post_text,
-                    AI_SENTIMENT(post_text) as sentiment_score,
-                    CASE 
-                        WHEN AI_SENTIMENT(post_text) >= 0.4 THEN '😊 Very Positive'
-                        WHEN AI_SENTIMENT(post_text) >= 0.1 THEN '🙂 Positive'
-                        WHEN AI_SENTIMENT(post_text) >= -0.1 THEN '😐 Neutral'
-                        WHEN AI_SENTIMENT(post_text) >= -0.4 THEN '🙁 Negative'
-                        ELSE '😞 Very Negative'
-                    END as sentiment
+                    AI_SENTIMENT(post_text):categories[0].sentiment::string as sentiment_label
                 FROM CORTEX_AISQL_DEMO.DEMO_DATA.social_media_posts
                 ORDER BY post_date DESC
                 """
@@ -724,12 +711,12 @@ elif demo_option == "😊 Sentiment Analysis":
                 
                 with col1:
                     st.markdown("### 📊 Sentiment Distribution")
-                    sentiment_dist = results['SENTIMENT'].value_counts()
+                    sentiment_dist = results['SENTIMENT_LABEL'].value_counts()
                     st.bar_chart(sentiment_dist)
                 
                 with col2:
-                    st.markdown("### 📈 Average Sentiment by Platform")
-                    platform_sentiment = results.groupby('PLATFORM')['SENTIMENT_SCORE'].mean().sort_values(ascending=False)
+                    st.markdown("### 📈 Sentiment by Platform")
+                    platform_sentiment = results.groupby(['PLATFORM', 'SENTIMENT_LABEL']).size().unstack(fill_value=0)
                     st.bar_chart(platform_sentiment)
                 
                 with st.expander("📋 View SQL Query"):
@@ -833,7 +820,7 @@ elif demo_option == "🌍 Translation & Localization":
         
         input_text = st.text_area(
             "Enter text to translate:",
-            value="Welcome to our store! We offer the best products at competitive prices. Our customer support team is available 24/7 to assist you.",
+            value="Your cyber insurance claim has been approved. Our incident response team will contact you within 24 hours. Coverage includes forensics, legal fees, and notification costs up to policy limits. Claims support is available 24/7.",
             height=150
         )
         
@@ -1027,11 +1014,11 @@ elif demo_option == "🔍 Advanced Filtering":
         st.dataframe(tickets_df.head(3), use_container_width=True)
         
         filter_conditions = [
-            "Does this ticket mention a product issue or defect?",
-            "Is this ticket urgent or expressing frustration?",
-            "Does this ticket contain positive feedback?",
-            "Does this ticket request a refund or return?",
-            "Is this a technical support issue?"
+            "Does this ticket mention a cyber security incident or ransomware?",
+            "Is this a claim notification requiring immediate attention?",
+            "Does this ticket mention D AND O or directors and officers insurance?",
+            "Is this ticket requesting a policy quote or new business?",
+            "Does this mention coverage limits, retention, or deductibles?"
         ]
         
         selected_filter = st.selectbox("Select filter condition:", filter_conditions)
@@ -1046,8 +1033,7 @@ elif demo_option == "🔍 Advanced Filtering":
                     ticket_text,
                     category,
                     AI_FILTER(
-                        ticket_text,
-                        '{selected_filter}'
+                        PROMPT('{selected_filter} {{0}}', ticket_text)
                     ) as matches_condition
                 FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
                 """
@@ -1083,11 +1069,11 @@ elif demo_option == "🔍 Advanced Filtering":
         st.dataframe(reviews_df.head(3), use_container_width=True)
         
         review_filters = [
-            "Does this review mention quality issues?",
-            "Is this review highly positive and enthusiastic?",
-            "Does this review mention price or value?",
-            "Does this review mention durability or longevity?",
-            "Would you recommend this product based on this review?"
+            "Does this review mention claims handling or claims service?",
+            "Is the reviewer satisfied with the coverage provided?",
+            "Does this review mention premium pricing concerns?",
+            "Does this review discuss response time or service speed?",
+            "Would the reviewer recommend this insurance product?"
         ]
         
         selected_review_filter = st.selectbox("Select filter condition:", review_filters)
@@ -1102,8 +1088,7 @@ elif demo_option == "🔍 Advanced Filtering":
                     review_text,
                     rating,
                     AI_FILTER(
-                        review_text,
-                        '{selected_review_filter}'
+                        PROMPT('{selected_review_filter} {{0}}', review_text)
                     ) as matches_condition
                 FROM CORTEX_AISQL_DEMO.DEMO_DATA.product_reviews
                 """
@@ -1133,7 +1118,7 @@ elif demo_option == "🔍 Advanced Filtering":
         
         custom_condition = st.text_input(
             "Enter your filter condition (natural language):",
-            value="Does this text express a complaint or problem?"
+            value="Does this mention a cyber security incident or data breach?"
         )
         
         if st.button("🔍 Apply Custom Filter", key="custom_filter"):
@@ -1152,10 +1137,9 @@ elif demo_option == "🔍 Advanced Filtering":
                 SELECT 
                     {columns_str},
                     AI_FILTER(
-                        {text_column},
-                        '{custom_condition}'
+                        PROMPT('{custom_condition} {{0}}', {text_column})
                     ) as matches_condition
-                FROM {table_name}
+                FROM CORTEX_AISQL_DEMO.DEMO_DATA.{table_name}
                 """
                 
                 results = session.sql(query).to_pandas()
@@ -1208,19 +1192,27 @@ elif demo_option == "💬 Text Completion":
                 
                 ticket_data = tickets_df[tickets_df['TICKET_ID'] == ticket_id].iloc[0]
                 
-                prompt = f"""You are a professional customer service representative. 
+                # Escape single quotes in the text to prevent SQL errors
+                customer_name = str(ticket_data['CUSTOMER_NAME']).replace("'", "''")
+                category = str(ticket_data['CATEGORY']).replace("'", "''")
+                ticket_text = str(ticket_data['TICKET_TEXT']).replace("'", "''")
                 
-Customer: {ticket_data['CUSTOMER_NAME']}
-Category: {ticket_data['CATEGORY']}
-Ticket: {ticket_data['TICKET_TEXT']}
+                prompt = f"""You are a professional insurance customer service representative. 
 
-Write a professional, empathetic response addressing the customer's concerns. 
+Customer: {customer_name}
+Category: {category}
+Ticket: {ticket_text}
+
+Write a professional, empathetic response addressing the customer's insurance concerns. 
 Be specific, helpful, and maintain a friendly tone."""
+                
+                # Escape single quotes in the prompt for SQL
+                escaped_prompt = prompt.replace("'", "''")
                 
                 query = f"""
                 SELECT AI_COMPLETE(
                     '{response_model}',
-                    '{prompt}'
+                    '{escaped_prompt}'
                 ) as response
                 """
                 
@@ -1246,12 +1238,12 @@ Be specific, helpful, and maintain a friendly tone."""
         
         content_type = st.selectbox(
             "Select content type:",
-            ["Product Description", "Marketing Email", "Social Media Post", "Blog Introduction", "FAQ Answer"]
+            ["Policy Summary", "Claims Notification Email", "Social Media Post", "Coverage Explanation", "FAQ Answer"]
         )
         
         topic = st.text_input(
-            "Enter topic or product:",
-            value="Wireless Noise-Cancelling Headphones"
+            "Enter topic or insurance product:",
+            value="Cyber Insurance Coverage"
         )
         
         tone = st.selectbox(
@@ -1269,11 +1261,11 @@ Be specific, helpful, and maintain a friendly tone."""
             with st.spinner(f"Generating {content_type}..."):
                 
                 prompts = {
-                    "Product Description": f"Write a compelling product description for {topic}. Highlight key features and benefits. Tone: {tone}.",
-                    "Marketing Email": f"Write a marketing email about {topic}. Include a subject line, opening, body, and call-to-action. Tone: {tone}.",
-                    "Social Media Post": f"Write an engaging social media post about {topic}. Keep it concise and include relevant hashtags. Tone: {tone}.",
-                    "Blog Introduction": f"Write an introduction paragraph for a blog post about {topic}. Make it engaging and informative. Tone: {tone}.",
-                    "FAQ Answer": f"Write a comprehensive FAQ answer about {topic}. Be clear and helpful. Tone: {tone}."
+                    "Policy Summary": f"Write a clear policy summary for {topic}. Highlight key coverage features, limits, and benefits. Tone: {tone}.",
+                    "Claims Notification Email": f"Write a claims notification email about {topic}. Include next steps, what is covered, and contact information. Tone: {tone}.",
+                    "Social Media Post": f"Write an engaging social media post about {topic} insurance. Keep it concise and include relevant insurance hashtags. Tone: {tone}.",
+                    "Coverage Explanation": f"Write a clear explanation of {topic} for policyholders. Explain what is covered, exclusions, and why it matters. Tone: {tone}.",
+                    "FAQ Answer": f"Write a comprehensive FAQ answer about {topic} insurance. Be clear, helpful, and address common concerns. Tone: {tone}."
                 }
                 
                 prompt = prompts[content_type]

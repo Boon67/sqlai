@@ -114,7 +114,7 @@ SELECT
     AI_CLASSIFY(
         post_text,
         ['cyber_insurance', 'directors_officers', 'errors_omissions']
-    ) as category
+    ):labels[0]::string as category
 FROM social_media_posts;
 ```
 
@@ -129,7 +129,7 @@ Measure policyholder satisfaction:
 ```sql
 SELECT 
     ticket_id,
-    AI_SENTIMENT(ticket_text) as sentiment
+    AI_SENTIMENT(ticket_text):categories[0].sentiment::string as sentiment
 FROM customer_tickets;
 ```
 
@@ -180,6 +180,20 @@ Filter insurance data with natural language:
 - Find tickets mentioning specific claim types
 - Filter policies by coverage conditions
 - Custom filter builder for any dataset
+
+**Example Query:**
+```sql
+SELECT 
+    ticket_id,
+    ticket_text,
+    AI_FILTER(
+        PROMPT('Does this mention a cyber security incident? {0}', ticket_text)
+    ) as is_cyber_incident
+FROM customer_tickets
+WHERE AI_FILTER(
+    PROMPT('Does this mention a cyber security incident? {0}', ticket_text)
+) = TRUE;
+```
 
 ### 8. Text Completion (AI_COMPLETE)
 Generate insurance content:
@@ -472,10 +486,10 @@ SELECT AI_EXTRACT(
 SELECT AI_CLASSIFY(
     'Our cyber insurance saved us during the ransomware attack',
     ['cyber_insurance', 'directors_officers', 'errors_omissions']
-);
+):labels[0]::string;
 
 -- Test AI_SENTIMENT
-SELECT AI_SENTIMENT('Excellent claims handling! Very satisfied.');
+SELECT AI_SENTIMENT('Excellent claims handling! Very satisfied.'):categories[0].sentiment::string;
 
 -- Test AI_TRANSLATE
 SELECT AI_TRANSLATE('Claim approved', 'en', 'es');

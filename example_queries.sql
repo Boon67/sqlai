@@ -16,19 +16,21 @@ SELECT
     customer_name,
     ticket_text,
     AI_EXTRACT(
-        'What is the order number? Return only the order number.',
-        ticket_text
-    ) as order_number
+        ticket_text,
+        [['order_number','What is the order number or policy number?']]
+    ):response.order_number::string as order_number
 FROM customer_tickets
-WHERE ticket_text ILIKE '%order%'
+WHERE ticket_text ILIKE '%order%' OR ticket_text ILIKE '%policy%'
 LIMIT 5;
 
 -- Extract multiple entities at once
 SELECT 
     ticket_id,
     AI_EXTRACT(
-        'Extract all product names, order numbers, and dates mentioned. Format as JSON.',
-        ticket_text
+        ticket_text,
+        [['product','What product or insurance type is mentioned?'],
+         ['order_number','What is the order number or policy number?'],
+         ['date','What date is mentioned?']]
     ) as extracted_entities
 FROM customer_tickets
 LIMIT 5;
@@ -37,9 +39,9 @@ LIMIT 5;
 SELECT 
     data_id,
     raw_text,
-    AI_EXTRACT('Extract all email addresses', raw_text) as emails,
-    AI_EXTRACT('Extract all phone numbers', raw_text) as phones,
-    AI_EXTRACT('Extract all person names', raw_text) as names
+    AI_EXTRACT(raw_text, [['emails','Extract all email addresses']]):response.emails::string as emails,
+    AI_EXTRACT(raw_text, [['phones','Extract all phone numbers']]):response.phones::string as phones,
+    AI_EXTRACT(raw_text, [['names','Extract all person names']]):response.names::string as names
 FROM unstructured_data;
 
 -- =====================================================
@@ -364,7 +366,7 @@ WITH ticket_analysis AS (
             ['billing', 'technical', 'product_issue', 'general']
         ) as classified_type,
         AI_FILTER(ticket_text, 'Is this urgent?') as is_urgent,
-        AI_EXTRACT('What is the main issue?', ticket_text) as main_issue
+        AI_EXTRACT(ticket_text, [['main_issue','What is the main issue?']]):response.main_issue::string as main_issue
     FROM customer_tickets
 )
 SELECT 
