@@ -74,6 +74,7 @@ demo_option = st.sidebar.radio(
     [
         "🏠 Overview",
         "📊 Claims Analytics Dashboard",
+        "📤 Document Upload & Q&A",
         "📝 Entity Extraction",
         "📈 Insights Aggregation", 
         "🏷️ Content Classification",
@@ -534,6 +535,425 @@ elif demo_option == "📊 Claims Analytics Dashboard":
                 
                 st.markdown("**Claim Details:**")
                 st.text(claim['TICKET_TEXT'][:500] + "..." if len(claim['TICKET_TEXT']) > 500 else claim['TICKET_TEXT'])
+
+# ============================================================
+# DOCUMENT UPLOAD & Q&A
+# ============================================================
+elif demo_option == "📤 Document Upload & Q&A":
+    st.markdown('<div class="section-header">Document Upload & Question Answering</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    ### 📤 Upload Your Insurance Documents and Ask Questions
+    
+    Upload any insurance document (policy, claim, report, etc.) and use AI to:
+    - **Extract specific information** from the document
+    - **Summarize key points** automatically
+    - **Ask questions** about the content
+    - **Analyze coverage** terms and conditions
+    - **Compare multiple** documents side-by-side
+    """)
+    
+    st.markdown("---")
+    
+    # Initialize session state for uploaded documents
+    if 'uploaded_docs' not in st.session_state:
+        st.session_state.uploaded_docs = []
+    
+    tab1, tab2, tab3 = st.tabs(["📤 Upload & Analyze", "❓ Ask Questions", "📊 Multi-Document Analysis"])
+    
+    with tab1:
+        st.subheader("Upload Insurance Documents")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            uploaded_file = st.file_uploader(
+                "Choose a document (TXT, PDF, DOCX)",
+                type=['txt', 'pdf', 'docx'],
+                help="Upload insurance policies, claims, reports, or any text document"
+            )
+            
+            if uploaded_file is not None:
+                # Read the file content
+                if uploaded_file.type == "text/plain":
+                    doc_text = uploaded_file.read().decode('utf-8')
+                elif uploaded_file.type == "application/pdf":
+                    try:
+                        import PyPDF2
+                        pdf_reader = PyPDF2.PdfReader(uploaded_file)
+                        doc_text = ""
+                        for page in pdf_reader.pages:
+                            doc_text += page.extract_text()
+                    except:
+                        st.error("Error reading PDF. Please install PyPDF2 or upload a TXT file.")
+                        doc_text = None
+                elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                    try:
+                        import docx
+                        doc = docx.Document(uploaded_file)
+                        doc_text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+                    except:
+                        st.error("Error reading DOCX. Please install python-docx or upload a TXT file.")
+                        doc_text = None
+                else:
+                    # Fallback to text
+                    try:
+                        doc_text = uploaded_file.read().decode('utf-8')
+                    except:
+                        st.error("Could not read file. Please upload a text-based document.")
+                        doc_text = None
+                
+                if doc_text:
+                    # Store in session state
+                    st.session_state.uploaded_docs.append({
+                        'name': uploaded_file.name,
+                        'text': doc_text,
+                        'size': len(doc_text)
+                    })
+                    
+                    st.success(f"✅ Uploaded: {uploaded_file.name} ({len(doc_text)} characters)")
+                    
+                    # Show preview
+                    with st.expander("📄 Document Preview (first 1000 characters)"):
+                        st.text(doc_text[:1000] + "..." if len(doc_text) > 1000 else doc_text)
+        
+        with col2:
+            st.markdown("#### Uploaded Documents")
+            if st.session_state.uploaded_docs:
+                for idx, doc in enumerate(st.session_state.uploaded_docs):
+                    st.markdown(f"**{idx+1}.** {doc['name']}")
+                    st.caption(f"{doc['size']:,} characters")
+                
+                if st.button("🗑️ Clear All Documents"):
+                    st.session_state.uploaded_docs = []
+                    st.rerun()
+            else:
+                st.info("No documents uploaded yet")
+        
+        st.markdown("---")
+        
+        # Automatic Analysis
+        if st.session_state.uploaded_docs:
+            st.subheader("🤖 Automatic Document Analysis")
+            
+            selected_doc = st.selectbox(
+                "Select document to analyze:",
+                [doc['name'] for doc in st.session_state.uploaded_docs],
+                key="analyze_doc_select"
+            )
+            
+            doc_idx = [doc['name'] for doc in st.session_state.uploaded_docs].index(selected_doc)
+            current_doc = st.session_state.uploaded_docs[doc_idx]
+            
+            analysis_cols = st.columns(3)
+            
+            with analysis_cols[0]:
+                if st.button("📝 Summarize Document", key="summarize_btn"):
+                    with st.spinner("Generating summary..."):
+                        # Escape single quotes for SQL
+                        escaped_text = current_doc['text'].replace("'", "''")[:10000]  # Limit to 10K chars
+                        
+                        summary_query = f"""
+                        SELECT AI_COMPLETE(
+                            'llama3.1-70b',
+                            'Summarize this insurance document in 3-5 bullet points highlighting the key information, coverage details, and important terms:\\n\\n{escaped_text}'
+                        ) as summary
+                        """
+                        
+                        try:
+                            result = session.sql(summary_query).collect()[0]['SUMMARY']
+                            st.markdown("### 📋 Document Summary")
+                            st.markdown(result)
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+            
+            with analysis_cols[1]:
+                if st.button("🏷️ Extract Key Terms", key="extract_btn"):
+                    with st.spinner("Extracting key information..."):
+                        escaped_text = current_doc['text'].replace("'", "''")[:10000]
+                        
+                        extract_query = f"""
+                        SELECT 
+                            AI_EXTRACT(
+                                '{escaped_text}',
+                                [['policy_number','What is the policy number?']]
+                            ):response.policy_number::string as policy_number,
+                            AI_EXTRACT(
+                                '{escaped_text}',
+                                [['coverage_amount','What is the coverage amount or limit?']]
+                            ):response.coverage_amount::string as coverage_amount,
+                            AI_EXTRACT(
+                                '{escaped_text}',
+                                [['insurance_type','What type of insurance is this?']]
+                            ):response.insurance_type::string as insurance_type,
+                            AI_EXTRACT(
+                                '{escaped_text}',
+                                [['effective_date','What is the effective date or policy period?']]
+                            ):response.effective_date::string as effective_date
+                        """
+                        
+                        try:
+                            result = session.sql(extract_query).collect()[0]
+                            st.markdown("### 🔍 Extracted Information")
+                            st.markdown(f"**Policy Number:** {result['POLICY_NUMBER']}")
+                            st.markdown(f"**Coverage Amount:** {result['COVERAGE_AMOUNT']}")
+                            st.markdown(f"**Insurance Type:** {result['INSURANCE_TYPE']}")
+                            st.markdown(f"**Effective Date:** {result['EFFECTIVE_DATE']}")
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+            
+            with analysis_cols[2]:
+                if st.button("😊 Analyze Sentiment", key="sentiment_btn"):
+                    with st.spinner("Analyzing sentiment..."):
+                        escaped_text = current_doc['text'].replace("'", "''")[:10000]
+                        
+                        sentiment_query = f"""
+                        SELECT 
+                            AI_SENTIMENT('{escaped_text}'):categories[0].sentiment::string as sentiment
+                        """
+                        
+                        try:
+                            result = session.sql(sentiment_query).collect()[0]['SENTIMENT']
+                            st.markdown("### 😊 Document Sentiment")
+                            
+                            if result == 'positive':
+                                st.success(f"✅ Sentiment: **{result.upper()}**")
+                            elif result == 'negative':
+                                st.error(f"⚠️ Sentiment: **{result.upper()}**")
+                            else:
+                                st.info(f"ℹ️ Sentiment: **{result.upper()}**")
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+    
+    with tab2:
+        st.subheader("❓ Ask Questions About Your Documents")
+        
+        if not st.session_state.uploaded_docs:
+            st.warning("⚠️ Please upload a document first in the 'Upload & Analyze' tab")
+        else:
+            selected_doc = st.selectbox(
+                "Select document:",
+                [doc['name'] for doc in st.session_state.uploaded_docs],
+                key="qa_doc_select"
+            )
+            
+            doc_idx = [doc['name'] for doc in st.session_state.uploaded_docs].index(selected_doc)
+            current_doc = st.session_state.uploaded_docs[doc_idx]
+            
+            st.markdown("### 💬 Question & Answer")
+            
+            # Predefined questions
+            st.markdown("#### Quick Questions:")
+            quick_questions = [
+                "What are the main coverage exclusions?",
+                "What is the deductible or retention amount?",
+                "What are the reporting requirements for claims?",
+                "What is the policy period and renewal terms?",
+                "What are the coverage limits?",
+                "Who are the named insureds?",
+                "What endorsements or riders are included?",
+                "What are the premium payment terms?"
+            ]
+            
+            quick_q_col1, quick_q_col2 = st.columns(2)
+            
+            selected_quick_question = None
+            with quick_q_col1:
+                for i in range(0, len(quick_questions), 2):
+                    if st.button(f"❓ {quick_questions[i]}", key=f"quick_q_{i}"):
+                        selected_quick_question = quick_questions[i]
+            
+            with quick_q_col2:
+                for i in range(1, len(quick_questions), 2):
+                    if st.button(f"❓ {quick_questions[i]}", key=f"quick_q_{i}"):
+                        selected_quick_question = quick_questions[i]
+            
+            st.markdown("---")
+            
+            # Custom question
+            custom_question = st.text_input(
+                "Or ask your own question:",
+                placeholder="e.g., Does this policy cover cyber attacks?",
+                key="custom_question"
+            )
+            
+            question = selected_quick_question if selected_quick_question else custom_question
+            
+            if st.button("🔍 Get Answer", key="qa_btn") and question:
+                with st.spinner("Analyzing document..."):
+                    # Escape single quotes
+                    escaped_text = current_doc['text'].replace("'", "''")[:15000]  # Limit for context
+                    escaped_question = question.replace("'", "''")
+                    
+                    qa_query = f"""
+                    SELECT AI_COMPLETE(
+                        'llama3.1-70b',
+                        'Based on the following insurance document, answer this question: {escaped_question}\\n\\nDocument:\\n{escaped_text}\\n\\nProvide a clear, specific answer based only on the information in the document. If the information is not in the document, say so.'
+                    ) as answer
+                    """
+                    
+                    try:
+                        result = session.sql(qa_query).collect()[0]['ANSWER']
+                        
+                        st.markdown("### 💡 Answer")
+                        st.markdown('<div class="success-box">', unsafe_allow_html=True)
+                        st.markdown(f"**Question:** {question}")
+                        st.markdown(f"**Answer:** {result}")
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+            
+            st.markdown("---")
+            
+            # Multiple extractions
+            st.markdown("### 🎯 Extract Multiple Data Points")
+            
+            extraction_fields = st.text_area(
+                "Enter questions to extract (one per line):",
+                value="What is the policy number?\nWhat is the premium amount?\nWhat is the coverage limit?",
+                height=100,
+                key="extraction_fields"
+            )
+            
+            if st.button("📊 Extract All Fields", key="extract_all_btn"):
+                if extraction_fields:
+                    questions = [q.strip() for q in extraction_fields.split('\n') if q.strip()]
+                    
+                    with st.spinner(f"Extracting {len(questions)} fields..."):
+                        escaped_text = current_doc['text'].replace("'", "''")[:15000]
+                        
+                        results = []
+                        for i, q in enumerate(questions):
+                            escaped_q = q.replace("'", "''")
+                            extract_q = f"""
+                            SELECT AI_EXTRACT(
+                                '{escaped_text}',
+                                [['value','{escaped_q}']]
+                            ):response.value::string as value
+                            """
+                            
+                            try:
+                                result = session.sql(extract_q).collect()[0]['VALUE']
+                                results.append({'Question': q, 'Answer': result})
+                            except:
+                                results.append({'Question': q, 'Answer': 'Error extracting'})
+                        
+                        # Display results
+                        st.markdown("### 📋 Extraction Results")
+                        results_df = pd.DataFrame(results)
+                        st.dataframe(results_df, use_container_width=True)
+    
+    with tab3:
+        st.subheader("📊 Multi-Document Comparison")
+        
+        if len(st.session_state.uploaded_docs) < 2:
+            st.warning("⚠️ Please upload at least 2 documents to compare")
+        else:
+            st.markdown("### 🔄 Compare Documents")
+            
+            compare_cols = st.columns(2)
+            
+            with compare_cols[0]:
+                doc1_name = st.selectbox(
+                    "Select first document:",
+                    [doc['name'] for doc in st.session_state.uploaded_docs],
+                    key="compare_doc1"
+                )
+                doc1_idx = [doc['name'] for doc in st.session_state.uploaded_docs].index(doc1_name)
+                doc1 = st.session_state.uploaded_docs[doc1_idx]
+                st.caption(f"{doc1['size']:,} characters")
+            
+            with compare_cols[1]:
+                doc2_name = st.selectbox(
+                    "Select second document:",
+                    [doc['name'] for doc in st.session_state.uploaded_docs if doc['name'] != doc1_name],
+                    key="compare_doc2"
+                )
+                doc2_idx = [doc['name'] for doc in st.session_state.uploaded_docs].index(doc2_name)
+                doc2 = st.session_state.uploaded_docs[doc2_idx]
+                st.caption(f"{doc2['size']:,} characters")
+            
+            comparison_type = st.radio(
+                "Select comparison type:",
+                ["Coverage Comparison", "Key Differences", "Policy Terms", "Premium Comparison"],
+                horizontal=True
+            )
+            
+            if st.button("🔍 Compare Documents", key="compare_btn"):
+                with st.spinner("Comparing documents..."):
+                    escaped_doc1 = doc1['text'].replace("'", "''")[:10000]
+                    escaped_doc2 = doc2['text'].replace("'", "''")[:10000]
+                    
+                    if comparison_type == "Coverage Comparison":
+                        prompt = f"Compare the coverage provided in these two insurance documents. List what is covered in each and highlight the differences:\\n\\nDocument 1: {escaped_doc1}\\n\\nDocument 2: {escaped_doc2}"
+                    elif comparison_type == "Key Differences":
+                        prompt = f"Identify and list the key differences between these two insurance documents:\\n\\nDocument 1: {escaped_doc1}\\n\\nDocument 2: {escaped_doc2}"
+                    elif comparison_type == "Policy Terms":
+                        prompt = f"Compare the policy terms, conditions, and exclusions in these two documents:\\n\\nDocument 1: {escaped_doc1}\\n\\nDocument 2: {escaped_doc2}"
+                    else:  # Premium Comparison
+                        prompt = f"Compare the premium amounts, payment terms, and pricing structure in these two documents:\\n\\nDocument 1: {escaped_doc1}\\n\\nDocument 2: {escaped_doc2}"
+                    
+                    compare_query = f"""
+                    SELECT AI_COMPLETE(
+                        'llama3.1-70b',
+                        '{prompt}'
+                    ) as comparison
+                    """
+                    
+                    try:
+                        result = session.sql(compare_query).collect()[0]['COMPARISON']
+                        
+                        st.markdown("### 📊 Comparison Results")
+                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                        st.markdown(f"**Document 1:** {doc1_name}")
+                        st.markdown(f"**Document 2:** {doc2_name}")
+                        st.markdown("---")
+                        st.markdown(result)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+            
+            st.markdown("---")
+            
+            # Batch extraction from multiple documents
+            st.markdown("### 📋 Extract Same Field from All Documents")
+            
+            batch_question = st.text_input(
+                "Enter question to extract from all documents:",
+                placeholder="e.g., What is the coverage limit?",
+                key="batch_question"
+            )
+            
+            if st.button("📊 Extract from All Documents", key="batch_extract_btn") and batch_question:
+                with st.spinner(f"Extracting from {len(st.session_state.uploaded_docs)} documents..."):
+                    batch_results = []
+                    
+                    for doc in st.session_state.uploaded_docs:
+                        escaped_text = doc['text'].replace("'", "''")[:15000]
+                        escaped_q = batch_question.replace("'", "''")
+                        
+                        extract_q = f"""
+                        SELECT AI_EXTRACT(
+                            '{escaped_text}',
+                            [['value','{escaped_q}']]
+                        ):response.value::string as value
+                        """
+                        
+                        try:
+                            result = session.sql(extract_q).collect()[0]['VALUE']
+                            batch_results.append({
+                                'Document': doc['name'],
+                                'Extracted Value': result
+                            })
+                        except:
+                            batch_results.append({
+                                'Document': doc['name'],
+                                'Extracted Value': 'Error extracting'
+                            })
+                    
+                    st.markdown("### 📊 Batch Extraction Results")
+                    batch_df = pd.DataFrame(batch_results)
+                    st.dataframe(batch_df, use_container_width=True)
 
 # ============================================================
 # ENTITY EXTRACTION

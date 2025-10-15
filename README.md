@@ -7,6 +7,7 @@ A comprehensive Streamlit application demonstrating all Cortex AISQL functions w
 This application showcases the full capabilities of Snowflake Cortex AISQL functions through interactive insurance industry demonstrations:
 
 - **📊 Claims Analytics Dashboard** - Comprehensive claims intelligence with AI-powered insights
+- **📤 Document Upload & Q&A** - Upload documents and ask questions using NLP (NEW!)
 - **📝 Entity Extraction** - Extract policy numbers, claim amounts, and insurance types
 - **📈 Insights Aggregation** - Analyze trends across insurance claims and tickets
 - **🏷️ Content Classification** - Classify content by insurance type and urgency
@@ -61,7 +62,7 @@ snow connection test
 ### 3. Deploy Everything
 
 ```bash
-# Set up database and sample insurance data (18 claims, 14 reviews, 8 documents)
+# Set up database and sample insurance data (60 claims, 40 reviews, 15 documents)
 snow sql -f setup_data.sql
 
 # Deploy the Streamlit app
@@ -79,7 +80,7 @@ Or navigate to **Streamlit** in Snowsight and open **cortex_aisql_demo**.
 
 ## 📊 Application Features
 
-### 0. Claims Analytics Dashboard (NEW!)
+### 0. Claims Analytics Dashboard
 Comprehensive claims intelligence combining multiple AI functions:
 
 **📈 Key Metrics:**
@@ -98,6 +99,27 @@ Comprehensive claims intelligence combining multiple AI functions:
 - **High-Value Claims**: Extract amounts, identify patterns, provide risk management guidance
 - **Risk Analysis**: Insurance type-specific risk patterns with prevention recommendations
 - **Category Analysis**: Deep-dive analysis by insurance category
+
+### 0.5 Document Upload & Q&A (NEW!)
+Upload your own insurance documents and analyze them with AI:
+
+**📤 Upload & Analyze:**
+- Support for TXT, PDF, and DOCX files
+- Automatic document summarization (3-5 bullet points)
+- Extract key terms (policy number, coverage amount, insurance type, effective date)
+- Sentiment analysis of document content
+
+**❓ Ask Questions:**
+- Pre-built insurance-specific questions
+- Custom question input
+- AI-powered answers using AI_COMPLETE
+- Batch extraction of multiple data points
+
+**📊 Multi-Document Analysis:**
+- Compare two documents side-by-side
+- Coverage comparison, key differences, policy terms, premium comparison
+- Extract the same field from all uploaded documents
+- Build a searchable knowledge base
 
 **📋 Recent Claims Feed:**
 - Interactive expandable cards for each claim
@@ -271,42 +293,48 @@ SELECT
 
 ## 🏢 Insurance Sample Data
 
-The application includes realistic specialty insurance data across 8 product lines:
+The application includes a comprehensive dataset with realistic specialty insurance data across 8 product lines:
 
-### Customer Tickets (18 records)
-- **Categories:** Claims, New Business, Renewal, Feedback
-- **Insurance Types:** D&O (2), Cyber (2), E&O (1), EPLI (1), Product Liability (1), Marine (3), Aviation (2), Political Risk (2)
-- **Content:** Policy inquiries, claim reports, coverage questions across all 8 insurance lines
+### Customer Tickets (60 records)
+- **Claims:** 54 records across all 8 insurance lines
+  - Cyber (10), D&O (8), E&O (6), EPLI (5), Product Liability (6)
+  - Marine (7), Aviation (6), Political Risk (6)
+- **New Business:** 6 inquiries
+- **Content:** Detailed policy inquiries, claim reports, coverage questions with policy numbers, claim amounts, and incident details
 
-### Product Reviews (14 records)
-- Insurance products across all lines with detailed feedback
-- Ratings and reviews on claims handling, coverage quality, pricing
-- Marine, Aviation, and Political Risk product reviews included
+### Product Reviews (40 records)
+- **8 reviews per major insurance line** with diverse ratings (1-5 stars)
+- Cyber (8), D&O (6), E&O (5), EPLI (4)
+- Product Liability (4), Marine (4), Aviation (4), Political Risk (4)
+- Detailed feedback on claims handling, coverage quality, pricing, and service
+- Real-world scenarios: ransomware response, securities litigation, professional liability, etc.
 
-### Social Media Posts (14 records)
-- Posts about all 8 insurance lines
+### Social Media Posts (30 records)
+- Posts about all 8 insurance lines from industry professionals
 - Platforms: LinkedIn, Twitter
-- Topics: Market trends, claims experiences, regulatory updates, piracy risks, aviation safety
+- Topics: Market trends, premium increases, claims experiences, regulatory updates
+- Coverage trends: Cyber insurance market growth, D&O hardening, marine piracy risks, aviation safety
 
-### Multilingual Content (10 records)
-- Insurance communications in 10 languages
+### Multilingual Content (20 records)
+- Insurance communications in 10 languages (EN, FR, DE, JA, ES, IT, KO, PT, NL, PL)
 - Claims notifications, policy confirmations, renewal reminders
-- Coverage for Cyber, D&O, and E&O in multiple languages
+- Coverage across all 8 insurance lines
+- Real-world scenarios: cyber breach notifications, marine claims updates, aviation incidents
 
-### Documents (8 records)
-- **Cyber Claims Report Q4 2023** - Quarterly claims analysis
-- **D&O Policy Terms** - Comprehensive policy conditions
-- **E&O Underwriting Guidelines** - Rating factors and eligibility
-- **Claims Committee Minutes** - Large loss review
-- **Marine Market Analysis 2024** - Market trends, war risk, P&I coverage
-- **Aviation Underwriting Manual** - Coverage types, rating factors, drone coverage
-- **Political Risk Assessment Guide** - Coverage areas, risk factors, claims process
-- **TPA Service Agreement** - Third-party administrator contract
+### Documents (15 records)
+Comprehensive insurance documents including:
+- **Claims Reports:** Cyber Q4 2023 Analysis, EPLI Claims 2023, Product Liability Trends
+- **Policy Terms:** D&O Policy, Marine P&I Coverage Guide, Aviation Product Liability
+- **Market Analysis:** Marine Market 2024, Cyber Market Outlook, Political Risk Infrastructure
+- **Guidelines:** E&O Underwriting, Aviation Manual, Political Risk Assessment
+- **Other:** Claims Committee Minutes, TPA Service Agreement, D&O Securities Litigation
 
-### Unstructured Data (8 records)
-- Claim notifications for all insurance lines
-- Premium invoices and quotes
-- Marine, Aviation, and Political Risk claim alerts
+### Unstructured Data (15 records)
+- Claim notifications across all insurance lines
+- Premium invoices and policy quotes
+- Meeting notices and loss run requests
+- Incident reports: cyber breaches, marine collisions, aviation accidents, political violence
+- Product recalls, EPLI complaints, securities lawsuits
 
 ## 🤖 Supported LLM Models
 
@@ -322,7 +350,8 @@ sqlai/
 ├── snowflake.yml              # Snowflake application configuration
 ├── streamlit_app.py           # Main Streamlit application (1,726 lines)
 ├── environment.yml            # Python dependencies
-├── setup_data.sql             # Database and sample data (258 lines, 18 claims)
+├── setup_data.sql             # Database and large dataset (60 claims, 40 reviews, 180 total records)
+├── setup_data_small.sql       # Original small dataset (18 claims - backup)
 ├── example_queries.sql        # Example Cortex AISQL queries (449 lines)
 ├── README.md                  # This file
 └── CLAIMS_DASHBOARD_GUIDE.md  # Claims Analytics Dashboard documentation
@@ -741,7 +770,7 @@ The application is designed to be extensible. Ideas for future enhancements:
 - Review deployment logs: `snow streamlit get-logs cortex_aisql_demo`
 - Check query history in Snowsight
 - Verify Cortex function availability: `SHOW FUNCTIONS LIKE '%AI_%' IN ACCOUNT`
-- Review `CLAIMS_DASHBOARD_GUIDE.md` for dashboard-specific questions
+- See the "Claims Analytics Dashboard Guide" section below for dashboard-specific information
 
 ## 📈 Next Steps
 
@@ -755,6 +784,306 @@ The application is designed to be extensible. Ideas for future enhancements:
 
 ---
 
+# 📊 Claims Analytics Dashboard Guide
+
+## Overview
+
+The Claims Analytics Dashboard is a comprehensive insurance claims intelligence tool that leverages Snowflake Cortex AI functions to provide actionable insights on insurance claims across multiple product lines.
+
+## Insurance Lines Covered
+
+The dashboard supports **8 insurance product lines**:
+
+1. **Cyber Insurance** - Ransomware, data breaches, business interruption
+2. **Directors & Officers (D&O)** - Board liability, securities litigation
+3. **Errors & Omissions (E&O)** - Professional liability for consultants and service providers
+4. **Employment Practices Liability (EPLI)** - Employment discrimination, wrongful termination
+5. **Product Liability** - Manufacturing defects, product recalls
+6. **Marine Insurance** - Hull damage, cargo claims, P&I coverage
+7. **Aviation Insurance** - Aircraft hull damage, aviation liability
+8. **Political Risk** - Expropriation, currency inconvertibility, contract frustration
+
+## Dashboard Features
+
+### 1. Key Metrics (Real-time)
+
+- **Total Claims**: Count of all claims in the system
+- **Insurance Types**: Number of unique insurance product lines
+- **Average Sentiment**: Overall sentiment analysis of claims (Positive/Neutral/Negative)
+- **Urgent Claims**: Claims marked with urgent keywords
+
+### 2. Claims Distribution by Insurance Line
+
+- **Visual Bar Chart**: Shows claim volume by insurance type
+- **AI-Powered Classification**: Uses `AI_EXTRACT` to automatically identify insurance type from claim text
+- **Top Insurance Lines**: Quick view of highest-volume claim types
+
+### 3. Sentiment Analysis
+
+- **Distribution Chart**: Visualizes positive, neutral, and negative sentiment across all claims
+- **Percentage Breakdown**: Shows sentiment distribution with percentages
+- **Uses `AI_SENTIMENT`**: Cortex AI function for categorical sentiment analysis
+
+### 4. Claims Timeline
+
+- **Line Chart**: Tracks claims over time by insurance type
+- **Trend Analysis**: Helps identify patterns and seasonal variations
+- **Multi-line View**: Compare claim volumes across different insurance lines
+
+### 5. AI-Powered Claims Insights
+
+#### Claims Summary Tab
+- **Overall Analysis**: AI_AGG summarizes all claims
+- **Key Insights**: Identifies common claim types, urgency patterns, processing improvements
+- **One-Click Analysis**: Generate comprehensive summary with a single button
+
+#### High-Value Claims Tab
+- **Value Extraction**: Automatically extracts claim amounts using `AI_EXTRACT`
+- **Pattern Analysis**: AI identifies patterns in high-value claims
+- **Risk Management Recommendations**: AI provides actionable risk mitigation strategies
+
+#### Risk Analysis Tab
+- **Insurance-Specific Analysis**: Filter by insurance type (All, Cyber, D&O, E&O, EPLI, Product Liability, Marine, Aviation, Political Risk)
+- **Risk Patterns**: AI identifies common risk factors and emerging threats
+- **Prevention Recommendations**: Actionable suggestions to reduce claim frequency
+
+#### Category Analysis Tab
+- **Dynamic Category Detection**: Automatically discovers insurance categories in claims
+- **Deep Dive Analysis**: AI_AGG provides detailed analysis for selected category
+- **Claims Handler Recommendations**: Specific guidance for processing claims in each category
+
+### 6. Recent Claims Feed
+
+- **Interactive Expanders**: Each claim shows in a collapsible card
+- **Auto-Classification**: Optional urgency classification (urgent/normal/low_priority)
+- **Metadata Display**: Shows insurance type, sentiment, and urgency
+- **Adjustable View**: Slider to control number of claims displayed (5-20)
+
+## Dashboard Use Cases
+
+### 1. Claims Operations Management
+- Monitor claim volumes across product lines
+- Identify bottlenecks and processing delays
+- Track sentiment to measure customer satisfaction
+
+### 2. Risk Management
+- Identify emerging risk patterns
+- Analyze high-value claims for trends
+- Get AI-powered recommendations for risk mitigation
+
+### 3. Underwriting Intelligence
+- Understand claim frequency by insurance line
+- Identify problematic risks or products
+- Inform pricing and underwriting decisions
+
+### 4. Executive Reporting
+- Quick overview of claims portfolio
+- Sentiment analysis for customer experience metrics
+- Trend analysis for strategic planning
+
+### 5. Claims Triage
+- Auto-classify claims by urgency
+- Route high-value claims for priority handling
+- Identify claims requiring specialist attention
+
+## Dashboard Best Practices
+
+### 1. Performance Optimization
+- Dashboard caches AI results where possible
+- Use filters to narrow analysis scope
+- Consider creating materialized views for frequently-run queries
+
+### 2. Data Quality
+- Ensure claim text contains sufficient detail for AI extraction
+- Include policy numbers, amounts, and insurance types in claim descriptions
+- Use consistent terminology across claims
+
+### 3. Analysis Frequency
+- Review key metrics daily
+- Run comprehensive AI analysis weekly
+- Perform deep-dive category analysis monthly
+
+### 4. Actionable Insights
+- Export AI-generated summaries for management reporting
+- Use risk analysis recommendations to improve processes
+- Track sentiment trends to measure claims handling improvements
+
+---
+
+# 📤 Document Upload & Question Answering
+
+## Overview
+
+The Document Upload & Q&A feature allows you to upload insurance documents and use AI to extract information, answer questions, and compare documents.
+
+## Features
+
+### 1. Upload & Analyze
+- **File Support**: Upload TXT, PDF, or DOCX files
+- **Automatic Analysis**: 
+  - Summarize document in 3-5 bullet points
+  - Extract key terms (policy number, coverage amount, insurance type, effective date)
+  - Analyze document sentiment
+
+### 2. Ask Questions
+- **Quick Questions**: Pre-built insurance-specific questions
+  - Coverage exclusions
+  - Deductible amounts
+  - Reporting requirements
+  - Policy periods
+  - Coverage limits
+  - Named insureds
+  - Endorsements
+  - Premium terms
+- **Custom Questions**: Ask any question about the document
+- **Batch Extraction**: Extract multiple data points at once
+
+### 3. Multi-Document Analysis
+- **Document Comparison**: Compare two documents side-by-side
+  - Coverage comparison
+  - Key differences
+  - Policy terms comparison
+  - Premium comparison
+- **Batch Extraction**: Extract the same field from all uploaded documents
+
+## Use Cases
+
+1. **Policy Review**: Upload policies and ask specific questions about coverage
+2. **Claims Analysis**: Upload claim documents and extract key information
+3. **Contract Comparison**: Compare multiple policies to identify differences
+4. **Due Diligence**: Analyze multiple documents for consistency
+5. **Knowledge Management**: Build a searchable repository of insurance documents
+
+---
+
+# 🚀 Deployment Summary
+
+## Dataset Statistics
+
+### Total Records: 180 across 6 tables
+
+| Table | Records | Description |
+|-------|---------|-------------|
+| **customer_tickets** | 60 | Insurance claims and inquiries across 8 product lines |
+| **product_reviews** | 40 | Customer reviews with ratings (1-5 stars) |
+| **social_media_posts** | 30 | Industry posts from LinkedIn and Twitter |
+| **multilingual_content** | 20 | Insurance communications in 10 languages |
+| **documents** | 15 | Policy documents, market reports, guidelines |
+| **unstructured_data** | 15 | Claim notifications, invoices, incident reports |
+
+## Insurance Coverage Breakdown
+
+### Customer Tickets (60 total)
+
+**Claims (54 records):**
+- **Cyber Insurance:** 10 claims - Ransomware attacks, data breaches, BEC, DDoS attacks ($150K - $2M)
+- **Directors & Officers (D&O):** 8 claims - Securities litigation, shareholder lawsuits, ERISA claims ($800K - $25M)
+- **Errors & Omissions (E&O):** 6 claims - Professional malpractice, consulting errors, audit failures ($1.2M - $6M)
+- **EPLI:** 5 claims - Wrongful termination, discrimination, harassment ($750K - $3.5M)
+- **Product Liability:** 6 claims - Product recalls, manufacturing defects, mass torts ($2M - $50M)
+- **Marine Insurance:** 7 claims - Hull damage, cargo loss, piracy, oil spills, P&I ($2M - $10M)
+- **Aviation Insurance:** 6 claims - Aircraft damage, total loss, passenger liability ($500K - $35M)
+- **Political Risk:** 6 claims - Expropriation, currency inconvertibility, political violence ($25M - $200M)
+
+**New Business (6 records):**
+- Quote requests across all insurance lines
+- Coverage inquiries with policy limits and premium indications
+
+## Key Features Deployed
+
+### 1. Claims Analytics Dashboard
+Comprehensive AI-powered claims intelligence featuring:
+- **Real-time Metrics**: Total claims, insurance types, sentiment analysis, urgent claims
+- **Visual Analytics**: Claims distribution, sentiment charts, timeline trends
+- **AI Insights**: Claims summaries, high-value analysis, risk patterns, category analysis
+- **Recent Claims Feed**: Interactive cards with auto-classification
+
+### 2. Document Upload & Q&A
+- Upload insurance documents (TXT, PDF, DOCX)
+- Ask questions about uploaded documents
+- Extract specific information automatically
+- Compare multiple documents side-by-side
+- Batch extraction across all documents
+
+### 3. Entity Extraction (AI_EXTRACT)
+- Extract policy numbers, claim amounts, insurance types
+- Parse contact information from unstructured text
+- Custom entity extraction with natural language prompts
+
+### 4. Insights Aggregation (AI_AGG)
+- Aggregate insights across large volumes without context limits
+- Category-specific analysis (Claims, New Business, Renewal)
+- Product review summarization
+
+### 5. Content Classification (AI_CLASSIFY)
+- Social media post classification by insurance type
+- Product review categorization
+- Intelligent ticket routing by department
+
+### 6. Sentiment Analysis (AI_SENTIMENT)
+- Product review sentiment scoring
+- Customer ticket sentiment tracking
+- Social media sentiment trends
+
+### 7. Translation & Localization (AI_TRANSLATE)
+- Support for 10 languages: EN, FR, DE, JA, ES, IT, KO, PT, NL, PL
+- Claims notifications and policy communications
+- Multilingual customer support
+
+### 8. Document Parsing
+- Analyze 15 comprehensive insurance documents
+- Extract coverage limits, policy terms, market trends
+- Summarize claims reports and guidelines
+
+### 9. Advanced Filtering (AI_FILTER)
+- Natural language filtering of insurance data
+- Find specific claim types or conditions
+- Custom filter builder
+
+### 10. Text Completion (AI_COMPLETE)
+- Generate claim responses
+- Create marketing content
+- Automated policy summaries
+
+## Data Quality & Realism
+
+### Claims Data Quality
+- **Realistic scenarios**: Based on actual insurance claim types
+- **Proper policy numbers**: Format matches industry standards (e.g., CYB-2024-123890)
+- **Accurate amounts**: Claim values appropriate for each insurance line
+- **Detailed descriptions**: Rich text for AI analysis
+- **Proper dates**: Sequential dates in Q1 2024
+- **Insurance-specific terminology**: D&O Side A/B/C, Jones Act, GDPR, NHTSA, etc.
+
+### Review Data Quality
+- **Diverse ratings**: 1-5 stars with realistic distribution
+- **Detailed feedback**: Specific mentions of claims handling, coverage, pricing
+- **Product-specific**: Reviews tailored to each insurance line
+- **Balanced sentiment**: Mix of positive, neutral, and negative reviews
+
+### Document Data Quality
+- **Industry-standard format**: Real-world document structures
+- **Comprehensive content**: 500-2000 characters per document
+- **Technical accuracy**: Insurance terms, coverage structures, market data
+- **Cross-referenced**: Documents reference related claims and policies
+
+## Performance Metrics
+
+### Dataset Sizing for Demos
+- **Small demos**: 5-10 records for quick demonstrations
+- **Medium analysis**: 20-30 records for trend analysis
+- **Large aggregation**: 50-60 records for comprehensive insights
+- **Document parsing**: 15 detailed documents for AI analysis
+
+### Expected AI Performance
+- **Entity Extraction**: <2 seconds per 10 records
+- **Sentiment Analysis**: <3 seconds per 20 records
+- **Classification**: <2 seconds per 10 records
+- **Aggregation (AI_AGG)**: 5-10 seconds for 50 records
+- **Translation**: <1 second per text
+
+---
+
 **Built with ❤️ using Snowflake Cortex AISQL**
 
 *Demonstrating AI-native insurance analytics within Snowflake*
@@ -762,5 +1091,5 @@ The application is designed to be extensible. Ideas for future enhancements:
 **Industry Focus:** Specialty Insurance  
 **Insurance Lines:** 8 (Cyber, D&O, E&O, EPLI, Product Liability, Marine, Aviation, Political Risk)  
 **Functions:** 9 Cortex AISQL Functions  
-**Data:** 18 Claims + 14 Reviews + 8 Documents + 14 Social Posts  
-**Features:** Claims Analytics Dashboard with AI-Powered Insights
+**Data:** 60 Claims + 40 Reviews + 15 Documents + 30 Social Posts + 20 Multilingual + 15 Unstructured = **180 Total Records**  
+**Features:** Claims Analytics Dashboard + Document Upload & Q&A + AI-Powered Insights
