@@ -73,8 +73,9 @@ demo_option = st.sidebar.radio(
     "Select Demo:",
     [
         "🏠 Overview",
+        "📊 Claims Analytics Dashboard",
         "📝 Entity Extraction",
-        "📊 Insights Aggregation", 
+        "📈 Insights Aggregation", 
         "🏷️ Content Classification",
         "😊 Sentiment Analysis",
         "🌍 Translation & Localization",
@@ -168,6 +169,373 @@ if demo_option == "🏠 Overview":
     st.info("👈 Use the sidebar to navigate between different demos. Each demo showcases specific Cortex AISQL capabilities with real-world scenarios.")
 
 # ============================================================
+# CLAIMS ANALYTICS DASHBOARD
+# ============================================================
+elif demo_option == "📊 Claims Analytics Dashboard":
+    st.markdown('<div class="section-header">Claims Analytics Dashboard</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    ### 📊 Comprehensive Claims Intelligence with Cortex AI
+    
+    This dashboard combines multiple Cortex AISQL functions to provide actionable insights on insurance claims.
+    """)
+    
+    # Top-level metrics
+    st.markdown("### 📈 Key Metrics")
+    metrics_cols = st.columns(4)
+    
+    with metrics_cols[0]:
+        total_claims = session.sql("""
+            SELECT COUNT(*) as cnt 
+            FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets 
+            WHERE category = 'Claims'
+        """).collect()[0]['CNT']
+        st.metric("Total Claims", total_claims, help="Total claims in the system")
+    
+    with metrics_cols[1]:
+        # Extract and count insurance types
+        insurance_types = session.sql("""
+            SELECT COUNT(DISTINCT 
+                AI_EXTRACT(
+                    ticket_text,
+                    [['insurance_type','What type of insurance is mentioned? (D&O, Cyber, E&O, EPLI, Product Liability, Marine, Aviation, Political Risk)']]
+                ):response.insurance_type::string
+            ) as cnt
+            FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+            WHERE category = 'Claims'
+        """).collect()[0]['CNT']
+        st.metric("Insurance Types", insurance_types, help="Unique insurance product lines")
+    
+    with metrics_cols[2]:
+        avg_sentiment = session.sql("""
+            SELECT 
+                AVG(CASE 
+                    WHEN AI_SENTIMENT(ticket_text):categories[0].sentiment::string = 'positive' THEN 1
+                    WHEN AI_SENTIMENT(ticket_text):categories[0].sentiment::string = 'neutral' THEN 0
+                    ELSE -1
+                END) as avg_score
+            FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+            WHERE category = 'Claims'
+        """).collect()[0]['AVG_SCORE']
+        sentiment_label = "Positive" if avg_sentiment > 0.2 else ("Negative" if avg_sentiment < -0.2 else "Neutral")
+        st.metric("Avg Sentiment", sentiment_label, f"{avg_sentiment:.2f}", help="Average sentiment score")
+    
+    with metrics_cols[3]:
+        urgent_claims = session.sql("""
+            SELECT COUNT(*) as cnt
+            FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+            WHERE category = 'Claims'
+            AND LOWER(ticket_text) LIKE '%urgent%'
+        """).collect()[0]['CNT']
+        st.metric("Urgent Claims", urgent_claims, help="Claims marked as urgent")
+    
+    st.markdown("---")
+    
+    # Claims by Insurance Line
+    st.markdown("### 🏷️ Claims Distribution by Insurance Line")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        with st.spinner("Analyzing claims by insurance type..."):
+            insurance_dist = session.sql("""
+                SELECT 
+                    AI_EXTRACT(
+                        ticket_text,
+                        [['insurance_type','What type of insurance is mentioned? Answer with one of: D&O, Cyber, E&O, EPLI, Product Liability, Marine, Aviation, Political Risk']]
+                    ):response.insurance_type::string as insurance_type,
+                    COUNT(*) as claim_count
+                FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+                WHERE category = 'Claims'
+                GROUP BY insurance_type
+                ORDER BY claim_count DESC
+            """).to_pandas()
+            
+            # Clean up None values
+            insurance_dist = insurance_dist[insurance_dist['INSURANCE_TYPE'].notna()]
+            
+            if not insurance_dist.empty:
+                st.bar_chart(insurance_dist.set_index('INSURANCE_TYPE')['CLAIM_COUNT'])
+            else:
+                st.info("No data available")
+    
+    with col2:
+        st.markdown("#### Top Insurance Lines")
+        if not insurance_dist.empty:
+            for idx, row in insurance_dist.head(5).iterrows():
+                st.markdown(f"**{row['INSURANCE_TYPE']}**: {row['CLAIM_COUNT']} claims")
+        else:
+            st.info("No data available")
+    
+    st.markdown("---")
+    
+    # Sentiment Analysis by Category
+    st.markdown("### 😊 Sentiment Analysis by Category")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        with st.spinner("Analyzing sentiment..."):
+            sentiment_data = session.sql("""
+                SELECT 
+                    AI_SENTIMENT(ticket_text):categories[0].sentiment::string as sentiment,
+                    COUNT(*) as count
+                FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+                WHERE category = 'Claims'
+                GROUP BY sentiment
+                ORDER BY count DESC
+            """).to_pandas()
+            
+            if not sentiment_data.empty:
+                st.bar_chart(sentiment_data.set_index('SENTIMENT')['COUNT'])
+            else:
+                st.info("No sentiment data available")
+    
+    with col2:
+        st.markdown("#### Sentiment Breakdown")
+        if not sentiment_data.empty:
+            total = sentiment_data['COUNT'].sum()
+            for idx, row in sentiment_data.iterrows():
+                percentage = (row['COUNT'] / total) * 100
+                st.markdown(f"**{row['SENTIMENT'].title()}**: {row['COUNT']} ({percentage:.1f}%)")
+        else:
+            st.info("No data available")
+    
+    st.markdown("---")
+    
+    # Claims Timeline
+    st.markdown("### 📅 Claims Timeline")
+    
+    timeline_data = session.sql("""
+        SELECT 
+            created_date,
+            COUNT(*) as claim_count,
+            AI_EXTRACT(
+                ticket_text,
+                [['insurance_type','What type of insurance?']]
+            ):response.insurance_type::string as insurance_type
+        FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+        WHERE category = 'Claims'
+        GROUP BY created_date, insurance_type
+        ORDER BY created_date
+    """).to_pandas()
+    
+    if not timeline_data.empty:
+        timeline_pivot = timeline_data.pivot_table(
+            index='CREATED_DATE', 
+            columns='INSURANCE_TYPE', 
+            values='CLAIM_COUNT', 
+            fill_value=0
+        )
+        st.line_chart(timeline_pivot)
+    else:
+        st.info("No timeline data available")
+    
+    st.markdown("---")
+    
+    # AI-Powered Claims Insights
+    st.markdown("### 🤖 AI-Powered Claims Insights")
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["📝 Claims Summary", "🔍 High-Value Claims", "⚠️ Risk Analysis", "🎯 Category Analysis"])
+    
+    with tab1:
+        st.markdown("#### Overall Claims Summary")
+        
+        if st.button("Generate Claims Summary", key="claims_summary"):
+            with st.spinner("Analyzing all claims with AI_AGG..."):
+                summary = session.sql("""
+                    SELECT 
+                        AI_AGG(
+                            ticket_text,
+                            'Analyze these insurance claims. Identify: 1) Most common claim types, 2) Patterns in urgency, 3) Key issues requiring immediate attention, 4) Recommendations for claims processing improvements.'
+                        ) as summary
+                    FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+                    WHERE category = 'Claims'
+                """).collect()[0]['SUMMARY']
+                
+                st.markdown('<div class="success-box">', unsafe_allow_html=True)
+                st.markdown(summary)
+                st.markdown('</div>', unsafe_allow_html=True)
+    
+    with tab2:
+        st.markdown("#### High-Value Claims Analysis")
+        
+        with st.spinner("Extracting claim amounts..."):
+            high_value_claims = session.sql("""
+                SELECT 
+                    ticket_id,
+                    customer_name,
+                    AI_EXTRACT(
+                        ticket_text,
+                        [['claim_amount','What is the claim amount or dollar value? Return just the number.']]
+                    ):response.claim_amount::string as claim_amount,
+                    AI_EXTRACT(
+                        ticket_text,
+                        [['insurance_type','What type of insurance?']]
+                    ):response.insurance_type::string as insurance_type,
+                    AI_SENTIMENT(ticket_text):categories[0].sentiment::string as sentiment,
+                    ticket_text
+                FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+                WHERE category = 'Claims'
+                LIMIT 10
+            """).to_pandas()
+            
+            st.dataframe(
+                high_value_claims[['TICKET_ID', 'CUSTOMER_NAME', 'CLAIM_AMOUNT', 'INSURANCE_TYPE', 'SENTIMENT']], 
+                use_container_width=True
+            )
+            
+            if st.button("Analyze High-Value Claims Pattern", key="high_value_analysis"):
+                with st.spinner("Analyzing patterns..."):
+                    analysis = session.sql("""
+                        SELECT 
+                            AI_AGG(
+                                ticket_text,
+                                'Analyze these high-value insurance claims. What patterns do you see in terms of claim types, amounts, and urgency? Provide recommendations for risk management.'
+                            ) as analysis
+                        FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+                        WHERE category = 'Claims'
+                        AND (
+                            LOWER(ticket_text) LIKE '%million%' OR 
+                            LOWER(ticket_text) LIKE '%$%m%' OR
+                            ticket_text LIKE '%000,000%'
+                        )
+                    """).collect()
+                    
+                    if analysis:
+                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                        st.markdown(analysis[0]['ANALYSIS'])
+                        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with tab3:
+        st.markdown("#### Risk Analysis by Insurance Type")
+        
+        insurance_type_filter = st.selectbox(
+            "Select Insurance Type:",
+            ["All", "Cyber", "D&O", "E&O", "EPLI", "Product Liability", "Marine", "Aviation", "Political Risk"],
+            key="risk_insurance_filter"
+        )
+        
+        if st.button("Analyze Risks", key="risk_analysis"):
+            with st.spinner(f"Analyzing {insurance_type_filter} claims..."):
+                if insurance_type_filter == "All":
+                    risk_query = """
+                        SELECT 
+                            AI_AGG(
+                                ticket_text,
+                                'Analyze these insurance claims for risk patterns. Identify: 1) Common risk factors, 2) Emerging threats, 3) Claims that may escalate, 4) Prevention recommendations.'
+                            ) as risk_analysis
+                        FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+                        WHERE category = 'Claims'
+                    """
+                else:
+                    risk_query = f"""
+                        SELECT 
+                            AI_AGG(
+                                ticket_text,
+                                'Analyze these {insurance_type_filter} insurance claims. What are the specific risk patterns, common issues, and recommendations for this insurance line?'
+                            ) as risk_analysis
+                        FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+                        WHERE category = 'Claims'
+                        AND LOWER(ticket_text) LIKE LOWER('%{insurance_type_filter}%')
+                    """
+                
+                result = session.sql(risk_query).collect()
+                
+                if result and result[0]['RISK_ANALYSIS']:
+                    st.markdown('<div class="warning-box">', unsafe_allow_html=True)
+                    st.markdown(result[0]['RISK_ANALYSIS'])
+                    st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    st.info(f"No {insurance_type_filter} claims found for analysis.")
+    
+    with tab4:
+        st.markdown("#### Category-Specific Analysis")
+        
+        categories = session.sql("""
+            SELECT DISTINCT 
+                AI_EXTRACT(
+                    ticket_text,
+                    [['insurance_type','What type of insurance? Answer with one of: Cyber, D&O, E&O, EPLI, Product Liability, Marine, Aviation, Political Risk']]
+                ):response.insurance_type::string as category
+            FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+            WHERE category = 'Claims'
+        """).to_pandas()
+        
+        categories = categories[categories['CATEGORY'].notna()]['CATEGORY'].unique()
+        
+        if len(categories) > 0:
+            selected_category = st.selectbox("Select Category:", sorted(categories), key="category_analysis")
+            
+            if st.button("Analyze Category", key="analyze_category"):
+                with st.spinner(f"Analyzing {selected_category} claims..."):
+                    category_analysis = session.sql(f"""
+                        SELECT 
+                            AI_AGG(
+                                ticket_text,
+                                'Summarize the key issues and themes in these {selected_category} insurance claims. Provide actionable recommendations for claims handlers.'
+                            ) as analysis
+                        FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+                        WHERE category = 'Claims'
+                        AND LOWER(ticket_text) LIKE LOWER('%{selected_category}%')
+                    """).collect()
+                    
+                    if category_analysis:
+                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                        st.markdown(f"### {selected_category} Claims Analysis")
+                        st.markdown(category_analysis[0]['ANALYSIS'])
+                        st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.info("No categories found in claims data.")
+    
+    st.markdown("---")
+    
+    # Recent Claims Feed
+    st.markdown("### 📋 Recent Claims Feed")
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col2:
+        limit = st.slider("Number of claims", 5, 20, 10, key="recent_claims_limit")
+        auto_classify = st.checkbox("Auto-classify urgency", value=True, key="auto_classify")
+    
+    with col1:
+        recent_claims_query = f"""
+            SELECT 
+                ticket_id,
+                customer_name,
+                created_date,
+                AI_EXTRACT(
+                    ticket_text,
+                    [['insurance_type','What type of insurance?']]
+                ):response.insurance_type::string as insurance_type,
+                AI_SENTIMENT(ticket_text):categories[0].sentiment::string as sentiment,
+                {'AI_CLASSIFY(ticket_text, [' + "'urgent', 'normal', 'low_priority'" + ']):labels[0]::string as urgency,' if auto_classify else ''}
+                ticket_text
+            FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
+            WHERE category = 'Claims'
+            ORDER BY created_date DESC
+            LIMIT {limit}
+        """
+        
+        recent_claims = session.sql(recent_claims_query).to_pandas()
+        
+        for idx, claim in recent_claims.iterrows():
+            with st.expander(f"Claim #{claim['TICKET_ID']} - {claim['CUSTOMER_NAME']} ({claim['CREATED_DATE']})"):
+                col_a, col_b, col_c = st.columns(3)
+                with col_a:
+                    st.markdown(f"**Type:** {claim.get('INSURANCE_TYPE', 'N/A')}")
+                with col_b:
+                    st.markdown(f"**Sentiment:** {claim.get('SENTIMENT', 'N/A')}")
+                if auto_classify and 'URGENCY' in claim:
+                    with col_c:
+                        urgency_color = "🔴" if claim['URGENCY'] == 'urgent' else ("🟡" if claim['URGENCY'] == 'normal' else "🟢")
+                        st.markdown(f"**Urgency:** {urgency_color} {claim['URGENCY']}")
+                
+                st.markdown("**Claim Details:**")
+                st.text(claim['TICKET_TEXT'][:500] + "..." if len(claim['TICKET_TEXT']) > 500 else claim['TICKET_TEXT'])
+
+# ============================================================
 # ENTITY EXTRACTION
 # ============================================================
 elif demo_option == "📝 Entity Extraction":
@@ -192,7 +560,7 @@ elif demo_option == "📝 Entity Extraction":
         
         st.dataframe(tickets_df[['TICKET_ID', 'CUSTOMER_NAME', 'TICKET_TEXT']], use_container_width=True)
         
-        if st.button("🔍 Extract Order Numbers, Dates, and Products", key="extract_tickets"):
+        if st.button("🔍 Extract Policy, Claim Amount and Insurance Type", key="extract_tickets"):
             with st.spinner("Extracting entities..."):
                 
                 # Extract information using AI_EXTRACT (text first, then question in array)
@@ -210,7 +578,7 @@ elif demo_option == "📝 Entity Extraction":
                     ):response.claim_amount::string as claim_amount,
                     AI_EXTRACT(
                         ticket_text,
-                        [['insurance_type','What type of insurance is this? D&O, Cyber, E&O, EPLI, or Product Liability?']]
+                        [['insurance_type','What type of insurance is this? Answer with one of: D&O, Cyber, E&O, EPLI, Product Liability, Marine, Aviation, Political Risk']]
                     ):response.insurance_type::string as insurance_type
                 FROM CORTEX_AISQL_DEMO.DEMO_DATA.customer_tickets
                 LIMIT 5
@@ -300,7 +668,7 @@ elif demo_option == "📝 Entity Extraction":
 # ============================================================
 # INSIGHTS AGGREGATION
 # ============================================================
-elif demo_option == "📊 Insights Aggregation":
+elif demo_option == "📈 Insights Aggregation":
     st.markdown('<div class="section-header">Aggregating Insights with AI_AGG</div>', unsafe_allow_html=True)
     
     st.markdown("""

@@ -54,7 +54,31 @@ INSERT INTO customer_tickets VALUES
  '2024-01-25', 'Renewal'),
 (10, 'Patricia Lee', 'plee@boardmembers.com',
  'D AND O policy inquiry for our board members. We are a public company, market cap $500M. Need Side A, B, and C coverage. Previous insurer non-renewed us. Looking for $25M in coverage. Any prior acts coverage available? Board size: 9 members. Need quote by end of month.',
- '2024-01-26', 'New Business');
+ '2024-01-26', 'New Business'),
+(11, 'Captain Marcus Blake', 'mblake@oceantransport.com',
+ 'Marine cargo claim notification. Container ship MV Pacific Star experienced hull damage during storm on January 28, 2024. Policy MAR-2024-556677. Cargo value: $8.5M including electronics and machinery. Port of loading: Shanghai. Destination: Los Angeles. General average declared. Need surveyor assigned immediately.',
+ '2024-01-29', 'Claims'),
+(12, 'Emily Rodriguez', 'erodriguez@globalshipping.com',
+ 'Requesting marine hull and machinery quote for our fleet. 5 vessels: 2 container ships (80,000 DWT), 2 bulk carriers (50,000 DWT), 1 tanker (45,000 DWT). Total insured value: $250M. Trading worldwide including piracy zones. Need war risk and P AND I coverage included. Quote needed by February 15.',
+ '2024-01-30', 'New Business'),
+(13, 'Captain Sarah Mitchell', 'smitchell@skyfreight.com',
+ 'Aviation hull claim urgent! Aircraft registration N845AV sustained damage during hard landing at Denver on January 27, 2024. Boeing 737-800, insured value $45M. Policy AVI-2024-778899. No injuries but significant undercarriage damage. Aircraft grounded. Need immediate damage assessment and rental aircraft approval.',
+ '2024-01-27', 'Claims'),
+(14, 'Thomas Anderson', 'tanderson@charterair.com',
+ 'Aviation liability quote request for charter operation. Fleet: 8 aircraft (4 jets, 4 turboprops). Annual passenger count: 50,000. Coverage needed: $500M per occurrence, $500M aggregate. War and terrorism coverage required. Operating in US, Canada, Caribbean. Premium indication needed urgently.',
+ '2024-01-31', 'New Business'),
+(15, 'Rachel Wong', 'rwong@infrastructure-global.com',
+ 'Political risk insurance claim. Project: Power plant construction in emerging market. Contract value: $120M. Policy POL-2024-334455. Government expropriation occurred January 20, 2024. All assets seized without compensation. Need coverage confirmation for contract frustration and asset confiscation. Legal team standing by.',
+ '2024-01-25', 'Claims'),
+(16, 'David Kumar', 'dkumar@energyventures.com',
+ 'Political risk quote needed urgently. Oil exploration project in unstable region. Project value: $200M over 5 years. Risks: Government expropriation, currency inconvertibility, political violence, contract frustration. Countries: 3 African nations. Coverage period: 7 years including extended discovery. Need Lloyd\'s market quote.',
+ '2024-02-01', 'New Business'),
+(17, 'Captain John Peterson', 'jpeterson@maritimelogistics.com',
+ 'Marine P AND I claim. Crew member injury aboard MV Atlantic Voyager on January 22, 2024. Medical evacuation via helicopter required. Treatment costs estimated $150K. Potential Jones Act lawsuit filed. Policy PI-2024-889900. Need claims attorney and medical case manager assigned. Incident occurred in international waters.',
+ '2024-01-23', 'Claims'),
+(18, 'Alexandra Novak', 'anovak@aviationconsulting.com',
+ 'Aviation product liability question. We manufacture avionics systems installed in 500+ aircraft worldwide. Annual revenue: $75M. Need coverage for design defects, manufacturing errors, and failure to warn. Limits requested: $100M per occurrence. Worldwide territory including war zones. Previous carrier non-renewed. Urgent!',
+ '2024-02-02', 'New Business');
 
 -- =====================================================
 -- 2. Product Reviews Table (for AI_SENTIMENT, AI_CLASSIFY, AI_FILTER)
@@ -77,7 +101,11 @@ INSERT INTO product_reviews VALUES
 (7, 'Directors Shield Gold', 'Exceptional D AND O coverage! Side A, B, and C all included. Non-recourse advancement of defense costs. Claims team has deep expertise in securities litigation. Premium was higher but worth it for peace of mind. Our board loves this coverage!', 5, '2024-01-16'),
 (8, 'Cyber Essentials SMB', 'Coverage limits are too low for actual cyber incidents. $500K limit barely covered our notification costs. No coverage for ransomware payments. Support team was unhelpful during our crisis. Not suitable for any serious business.', 2, '2024-01-17'),
 (9, 'Product Liability Plus', 'Policy excluded our main product line due to "high risk" classification. Underwriting was rigid and inflexible. Premium quote was 40% higher than competitors. Application process took forever. Went with another carrier.', 2, '2024-01-18'),
-(10, 'Management Liability Package', 'Excellent bundled coverage! Includes D AND O, EPLI, Fiduciary, and Crime. One premium, one deductible, streamlined claims. Saved 20% vs buying policies separately. Great for mid-size companies. Very satisfied with coverage and service.', 4, '2024-01-19');
+(10, 'Management Liability Package', 'Excellent bundled coverage! Includes D AND O, EPLI, Fiduciary, and Crime. One premium, one deductible, streamlined claims. Saved 20% vs buying policies separately. Great for mid-size companies. Very satisfied with coverage and service.', 4, '2024-01-19'),
+(11, 'Marine Cargo Premium', 'Exceptional marine insurance! When our container ship had cargo damage during transit, surveyor was assigned within 24 hours. Claim settled in 3 weeks. Coverage includes general average, war risk, and piracy. Lloyd market backed. Excellent service for international shipping!', 5, '2024-01-20'),
+(12, 'Aviation Hull Complete', 'Outstanding aviation hull coverage! Aircraft damage claim processed smoothly. Rental aircraft approved immediately so no business interruption. Coverage includes war and terrorism. Claims team understands aviation operations. Worth the premium for peace of mind.', 5, '2024-01-21'),
+(13, 'Political Risk Standard', 'Saved our project! Government expropriation occurred but coverage responded exactly as promised. Claims team had expertise in sovereign risk. Settlement covered contract frustration and asset loss. Essential coverage for emerging market investments.', 5, '2024-01-22'),
+(14, 'Marine Hull Basic', 'Disappointing coverage. Claim for engine damage was delayed for months. Survey costs not fully covered. War risk exclusions were broader than expected. Better marine hull options available in Lloyd market.', 2, '2024-01-23');
 
 -- =====================================================
 -- 3. Multilingual Content Table (for AI_TRANSLATE)
@@ -127,7 +155,16 @@ INSERT INTO documents VALUES
  'meeting_minutes', '2024-01-15'),
 (5, 'Master_Service_Agreement_TPA.txt',
  'Third Party Administrator Service Agreement. Contract Number: TPA-2024-001. Parties: Specialty Insurance Group (Carrier) and Claims Solutions Inc (TPA). Effective Date: March 1, 2024. Term: 36 months with annual renewal option. Services Scope: Claims intake and documentation, First notice of loss processing, Investigation coordination, Coverage analysis, Reserve recommendations, Settlement negotiations, Litigation management, Regulatory reporting. Performance Standards: Claims acknowledgment within 4 hours, Initial coverage position within 5 business days, Monthly reporting by 10th of month, 95% customer satisfaction target. Fee Structure: Per-claim fee $750 for claims under $100K, $1,500 for claims $100K-$1M, $3,000 for claims over $1M, Monthly retainer: $15,000. Audit Rights: Carrier may audit TPA files quarterly. Technology: TPA must use carrier portal for all claim updates. Confidentiality: 10-year obligation post-termination. Termination: 90 days written notice, immediate for cause. Insurance Requirements: E AND O coverage $10M, Cyber insurance $5M, General liability $2M. Governing Law: New York.',
- 'service_agreement', '2024-01-20');
+ 'service_agreement', '2024-01-20'),
+(6, 'Marine_Market_Analysis_2024.txt',
+ 'Marine Insurance Market Analysis 2024. Market Size: $35B globally. Growth Rate: 8% YoY driven by global trade expansion and climate-related losses. Hull Insurance: Average vessel values increasing 12% due to supply chain disruptions and new builds. Cargo Insurance: Claims frequency up 15% due to port congestion and logistics challenges. War Risk: Red Sea piracy incidents increased premiums by 300% for affected routes. Geopolitical tensions impacting trade routes through Suez Canal and Strait of Hormuz. P AND I Coverage: Crew injury claims trending upward. Jones Act litigation in US waters. Environmental liability growing concern with IMO 2030 regulations. Key Trends: Autonomous vessels requiring new coverage frameworks, Climate change impacting weather-related losses, Cyber threats to vessel navigation systems, Supply chain disruptions affecting cargo transit times. Lloyd Market: Remains dominant with 60% market share in marine hull. Emerging Markets: Asia-Pacific growth driven by Chinese Belt and Road infrastructure projects.',
+ 'marine_report', '2024-01-25'),
+(7, 'Aviation_Underwriting_Manual.txt',
+ 'Aviation Insurance Underwriting Manual 2024. Coverage Types: Hull Insurance (physical damage to aircraft), Liability Coverage (bodily injury and property damage), Passenger Liability, Product Liability (manufacturers), War and Terrorism. Aircraft Categories: Commercial Airlines (Part 121), Charter Operations (Part 135), General Aviation, UAV and Drones, Helicopters, Corporate Jets. Valuation: Agreed value for hull coverage, Market value assessments required annually, Depreciation schedules for older aircraft. Rating Factors: Pilot experience and certifications, Aircraft age and maintenance history, Operating territory and routes, Safety management systems, Claims history last 5 years. War Risk: Separate premium charged, High-risk zones require Lloyd market capacity, Terrorism coverage increasingly bundled. Drone Coverage: Fastest growing segment, Liability limits $1M-$10M typical, Regulatory compliance required (FAA Part 107). Claims: Average hull claim $2.5M, Liability claims can exceed $100M for major incidents, Business interruption critical for commercial operators. Market Capacity: Lloyd market provides 70% of aviation capacity, Specialist aviation syndicates required for large accounts.',
+ 'aviation_manual', '2024-01-28'),
+(8, 'Political_Risk_Assessment_Guide.txt',
+ 'Political Risk Insurance Assessment Guide. Coverage Areas: Expropriation and Confiscation (government seizure of assets), Currency Inconvertibility and Non-Transfer (inability to convert local currency or transfer funds), Political Violence (war, civil unrest, terrorism), Contract Frustration (government breach of contract). Eligible Projects: Infrastructure (power plants, ports, roads), Energy (oil, gas, renewable), Mining and extractive industries, Manufacturing facilities, Real estate development. Risk Assessment Factors: Country sovereign rating, Political stability index, Legal system strength, History of expropriation, Currency controls and restrictions. Coverage Structure: Maximum period 15-20 years, Extensions available for long-term projects, Waiting periods for currency inconvertibility (60-180 days), Percentage of loss coverage (90-95% typical). Premium Calculation: Based on country risk rating, Project type and size, Coverage period, Claim history in region. Claims Process: Notification within 30 days of event, Waiting periods before claim payment, Subrogation rights to insurer, International arbitration for disputes. Key Providers: Multilateral agencies (World Bank MIGA, ADB), Private market (Lloyd syndicates, specialist carriers), Export credit agencies (EXIM, EDC). Emerging Trends: Climate change impacting project viability, Renewable energy projects increasing, China Belt and Road creating demand, Sanctions complicating coverage.',
+ 'political_risk_guide', '2024-02-01');
 
 -- =====================================================
 -- 5. Social Media Posts (for AI_CLASSIFY, AI_FILTER, AI_SENTIMENT)
@@ -150,7 +187,11 @@ INSERT INTO social_media_posts VALUES
 (7, 'CISO_Forum', 'PSA: If you have cyber insurance, review your policy NOW. Many policies exclude ransomware payments or have sublimits that won\'t cover a real incident. #CISO #CyberInsurance #InfoSec', 'Twitter', '2024-01-12 11:30:00'),
 (8, 'Legal_Tech', 'Interesting case law development on D AND O Side A coverage. Delaware Court ruling could impact how we think about insured vs. insured exclusions. Insurance nerds unite! #InsuranceLaw #D AND O', 'LinkedIn', '2024-01-13 22:15:00'),
 (9, 'InsurTech_News', 'Breaking: Global cyber insurance market projected to reach $20B by 2025. Huge opportunity for innovation in underwriting and claims handling. #InsurTech #CyberInsurance', 'Twitter', '2024-01-14 08:00:00'),
-(10, 'SMB_Owner', 'Finally got proper insurance coverage for my consulting business. E AND O policy gives me peace of mind when signing big contracts. Highly recommend all consultants get this! #SmallBusiness #Consulting', 'LinkedIn', '2024-01-14 17:30:00');
+(10, 'SMB_Owner', 'Finally got proper insurance coverage for my consulting business. E AND O policy gives me peace of mind when signing big contracts. Highly recommend all consultants get this! #SmallBusiness #Consulting', 'LinkedIn', '2024-01-14 17:30:00'),
+(11, 'Shipping_Executive', 'Marine insurance premiums skyrocketing due to piracy risks in Red Sea region. War risk surcharges now 300% higher! Shipping industry needs better risk management solutions. #MarineInsurance #Shipping #Logistics', 'LinkedIn', '2024-01-15 10:20:00'),
+(12, 'Aviation_Consultant', 'Great aviation insurance conference! Key trend: UAV and drone coverage is the fastest growing segment. Traditional aviation carriers adapting quickly. Exciting times for aviation risk management. #AviationInsurance #Drones', 'Twitter', '2024-01-15 14:45:00'),
+(13, 'Project_Finance', 'Political risk insurance saved our infrastructure project! Government change led to contract frustration but coverage responded perfectly. Essential for any emerging market investment. #PoliticalRisk #ProjectFinance', 'LinkedIn', '2024-01-16 09:30:00'),
+(14, 'Marine_Underwriter', 'Reminder: Always declare cargo value accurately on marine policies. Underinsurance can result in general average contributions exceeding your claim recovery. #MarineInsurance #CargoInsurance', 'Twitter', '2024-01-16 16:00:00');
 
 -- =====================================================
 -- 6. Entity Extraction Table (for AI_EXTRACT)
@@ -171,7 +212,13 @@ INSERT INTO unstructured_data VALUES
 (4, 'Policy Quote QT-EPL-2024-8899 for Employment Practices Liability. Prospect: MedTech Innovations LLC. Employees: 450. Coverage Requested: $5M per claim, $5M aggregate. Premium Indication: $67,500 annually. Retention: $100,000. Quote valid until March 31, 2024. Underwriter: James Wilson. Territory: Multi-state (CA, TX, NY, FL).',
  'quote_document'),
 (5, 'Loss Run Request for TechCorp International. Policy Period: 2019-2024. Insurance Type: D AND O, E AND O, Cyber, EPLI. Total Claims: 8. Paid Losses: $2.3M. Outstanding Reserves: $1.8M. Incidents: 3 D AND O claims (securities litigation), 2 E AND O claims (contract disputes), 2 Cyber incidents (data breaches), 1 EPLI claim (wrongful termination). Requested by: Broker Smith & Associates for renewal underwriting.',
- 'loss_run');
+ 'loss_run'),
+(6, 'MARINE CARGO CLAIM: Vessel MV Pacific Star, IMO 9876543. Port of loading: Shanghai. Destination: Los Angeles. Cargo: Electronics valued at USD 8.5M. Policy MAR-2024-556677. General Average declared January 28, 2024. Contact Marine Claims Dept at marine.claims@specialtyins.com. Surveyor: Captain James Morrison, +1-555-MARINE-1.',
+ 'marine_claim'),
+(7, 'AVIATION INCIDENT REPORT: Aircraft N845AV, Boeing 737-800. Incident date: January 27, 2024. Location: Denver International Airport. Damage: Landing gear. Policy AVI-2024-778899. Hull value: $45M. Contact Aviation Claims at aviation@specialtyins.com or 24/7 hotline +1-855-AVCLAIM. Engineer inspection required.',
+ 'aviation_claim'),
+(8, 'POLITICAL RISK ALERT: Project Titan Power Plant, Country: Emerging Market X. Expropriation event: January 20, 2024. Contract value: USD 120M. Policy POL-2024-334455. Coverage: Contract frustration, asset confiscation. Contact: political.risk@specialtyins.com. Legal team: International Arbitration Group. Urgent action required.',
+ 'political_risk_claim');
 
 -- =====================================================
 -- 7. Create views for easy access in Streamlit
